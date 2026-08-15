@@ -778,6 +778,104 @@ header .meta{margin-top:6px;font-size:12.5px;opacity:.92}
 .chip{background:var(--soft);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer}
 .user-bar{display:flex;align-items:center;justify-content:space-between;background:var(--soft);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:14px}
 .user-bar .link{color:var(--primary);font-weight:700;cursor:pointer}
+
+/* ===== 机考风格(模拟考试 / 三轮复习 共用) ===== */
+.exam-topbar{position:sticky;top:0;z-index:9;background:linear-gradient(180deg,#1f3ba8,#2f4bc0);color:#fff;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(31,40,80,.18)}
+.exam-topbar .ttl{flex:0 0 auto;font-size:15.5px;font-weight:700}
+.exam-topbar .ttl .sub{font-size:11.5px;opacity:.85;margin-left:6px;font-weight:500}
+.exam-topbar .timer-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+.exam-topbar .timer-box{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);border-radius:8px;
+  padding:4px 10px;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.exam-topbar .timer-box.warn{background:#fff3bf;color:#b08900;border-color:#ffe066}
+.exam-topbar .timer-box.danger{background:#ffe3e3;color:#c92a2a;border-color:#ffa8a8;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.exam-topbar .meta{font-size:11.5px;opacity:.85;display:flex;flex-direction:column;align-items:flex-end;line-height:1.3}
+.exam-topbar .submit-btn{background:#fa5252;border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
+.exam-topbar .submit-btn:active{transform:scale(.96)}
+
+.exam-body{padding:12px 14px 100px;}
+.exam-progress{background:#fff;border-radius:10px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--sub);box-shadow:var(--shadow)}
+.exam-progress .bar{flex:1;height:6px;background:var(--line);border-radius:6px;overflow:hidden}
+.exam-progress .bar>i{display:block;height:100%;background:var(--primary);transition:width .25s}
+.exam-progress .nums b{color:var(--primary);font-weight:700}
+
+.exam-card{background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:14px 14px 12px;margin-bottom:12px}
+.exam-card .qhead{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--sub);margin-bottom:6px}
+.exam-card .qhead .qno{font-weight:800;color:var(--text);font-size:15px;margin-right:4px}
+.exam-card .casebg{margin:6px 0 12px;font-size:13.5px;line-height:1.65}
+.exam-card .stem{font-size:16.5px;font-weight:600;margin:6px 0 12px;line-height:1.65;white-space:pre-wrap}
+.exam-options{display:flex;flex-direction:column;gap:8px}
+.exam-options .opt{padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:15px;line-height:1.55;transition:.12s}
+.exam-options .opt:active{background:#f8f9fc}
+.exam-options .opt.sel{border-color:var(--primary);background:#f3f6ff}
+.exam-options .opt .mk{width:22px;height:22px;border-radius:50%;border:2px solid #cdd3e0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#8c94a6;flex:0 0 auto;margin-top:1px}
+.exam-options .opt.multi .mk{border-radius:6px}
+.exam-options .opt.correct{border-color:var(--green);background:#ebfbee}
+.exam-options .opt.wrong{border-color:var(--red);background:#fff5f5}
+.exam-options .opt .txt{flex:1}
+.exam-helper{display:flex;gap:8px;margin-top:8px;font-size:12.5px}
+.exam-helper .link{color:var(--primary);cursor:pointer;font-weight:600}
+.exam-helper .link:hover{text-decoration:underline}
+
+.exam-fb{background:#f8f9fc;border:1px solid var(--line);border-radius:12px;padding:12px 12px;margin-top:10px}
+.exam-fb .h{font-weight:700;font-size:14px;margin-bottom:6px}
+.exam-fb .ok{color:var(--green)} .exam-fb .no{color:var(--red)}
+.exam-fb .layer{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.exam-fb .layer:first-of-type{border-top:none;padding-top:0;margin-top:0}
+.exam-fb .layer-h{font-weight:700;color:var(--primary);font-size:13px;margin-bottom:4px}
+
+.exam-bar{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin:0 auto;background:#fff;border-top:1px solid var(--line);
+  display:flex;gap:8px;padding:8px 12px;z-index:8;box-shadow:0 -2px 8px rgba(30,40,90,.05)}
+.exam-bar .btn{margin:0;padding:11px;border-radius:10px;font-size:14px}
+.exam-bar .btn.primary{flex:1;background:var(--primary)}
+.exam-bar .btn.ghost{background:#fff;color:var(--primary);border:1.5px solid var(--primary)}
+.exam-bar .btn.orange{background:var(--orange);flex:0 0 90px}
+.exam-bar .btn.mark{flex:0 0 80px;background:#fff8e6;color:#b08900;border:1.5px solid #ffe066}
+.exam-bar .btn.mark.on{background:#ffe066;color:#5c4400}
+
+/* 答题卡抽屉 */
+.palette-overlay{position:fixed;inset:0;background:rgba(20,30,60,.45);z-index:20;display:none;align-items:flex-end;justify-content:center}
+.palette-overlay.show{display:flex}
+.palette-drawer{background:#fff;width:100%;max-width:760px;border-top-left-radius:18px;border-top-right-radius:18px;
+  padding:14px 16px 22px;max-height:82vh;overflow-y:auto}
+.palette-drawer .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.palette-drawer .ph h3{margin:0;font-size:16px}
+.palette-drawer .ph .x{cursor:pointer;font-size:22px;color:var(--sub);padding:0 4px}
+.palette-tabs{display:flex;gap:6px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.palette-tabs .ptab{padding:8px 12px;font-size:13.5px;font-weight:600;color:var(--sub);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent}
+.palette-tabs .ptab.act{color:var(--primary);border-bottom-color:var(--primary)}
+.palette-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:8px 0 10px;font-size:12px;color:var(--sub)}
+.palette-legend .lg{display:flex;align-items:center;gap:4px}
+.palette-legend .sw{width:14px;height:14px;border-radius:4px;border:1px solid var(--line)}
+.palette-legend .sw.done{background:var(--primary);border-color:var(--primary)}
+.palette-legend .sw.cur{background:#fff;border-color:var(--primary)}
+.palette-legend .sw.mark{background:#ffe066;border-color:#ffe066}
+.palette-legend .sw.empty{background:#fff;border-color:var(--line)}
+.palette-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.palette-grid .pcell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:600;background:#fff;border:1.5px solid var(--line);color:var(--sub);cursor:pointer}
+.palette-grid .pcell.cur{background:#fff;border-color:var(--primary);color:var(--primary)}
+.palette-grid .pcell.done{background:var(--primary);color:#fff;border-color:var(--primary)}
+.palette-grid .pcell.mark{background:#ffe066;color:#5c4400;border-color:#ffe066}
+.palette-grid .pcell.correct{background:var(--green);color:#fff;border-color:var(--green)}
+.palette-grid .pcell.wrong{background:var(--red);color:#fff;border-color:var(--red)}
+@media(max-width:480px){.palette-grid{grid-template-columns:repeat(7,1fr)}.exam-topbar{padding:8px 10px}.exam-topbar .ttl{font-size:14px}}
+
+/* 三轮复习面板 */
+.round-pick{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
+.round-pick .rp{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:18px 12px;text-align:center;cursor:pointer;position:relative}
+.round-pick .rp.done{background:linear-gradient(135deg,#e6fcf5,#d3f9d8);color:#2b8a3e}
+.round-pick .rp.cur{outline:2px solid var(--primary)}
+.round-pick .rp .badge{position:absolute;top:6px;right:8px;font-size:11px;color:var(--sub)}
+.round-pick .rp .no{font-size:24px;font-weight:800;color:var(--primary)}
+.round-pick .rp.done .no{color:var(--green)}
+.round-pick .rp .t{font-weight:700;margin-top:4px;font-size:14px}
+.round-pick .rp .s{font-size:11.5px;color:var(--sub);margin-top:4px}
+.round-pick .rp.done .s{color:#2b8a3e}
+.round-info{margin-top:14px;background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:14px}
+.round-info h4{margin:0 0 6px;font-size:14.5px}
+.round-info ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;color:#374151;line-height:1.8}
 </style>
 </head>
 <body>
@@ -991,6 +1089,10 @@ function renderHome(){
   const resumeHtml = (lp && lp.mode && lp.mode!=='home') ? `<div class="card resume" style="margin-top:14px;cursor:pointer" onclick="resumeLast()">
        <div><div style="font-weight:700">⏯ 继续上次练习</div><div class="muted" style="margin-top:4px">${modeName(lp.mode)} · 第${(lp.idx||0)+1}题</div></div>
        <div style="font-size:22px;color:var(--primary)">›</div></div>` : '';
+  const rr=getRoundResults();
+  const roundSummary = [1,2,3].map(r=>rr['r'+r]).some(Boolean) ? `<div class="card resume" style="margin-top:14px;cursor:pointer" onclick="renderRoundPicker()">
+       <div><div style="font-weight:700">🎯 三轮复习进度</div><div class="muted" style="margin-top:4px">${[1,2,3].map(r=>{const x=rr['r'+r]; return x?`第${r}轮 ${x.score}分 ${x.pass?'✅':'❌'}`:`第${r}轮 未开始`}).join('  ·  ')}</div></div>
+       <div style="font-size:22px;color:var(--primary)">›</div></div>` : '';
   const app=document.getElementById('app');
   app.innerHTML='';
   const h=el(`<div>
@@ -1004,12 +1106,23 @@ function renderHome(){
         <div><div class="num" style="color:var(--red)">${wrong}</div><div class="lab">错题数</div></div>
       </div>
       ${resumeHtml}
+      ${roundSummary}
       <div class="user-bar"><span>👤 当前用户：<b>${esc(curUser())}</b></span><span class="link" onclick="switchUser()">切换账号</span></div>
       <div class="grid" style="margin-top:14px">
         <div class="mode-btn" onclick="startMode('chapter')"><div class="ic">📚</div><div class="t">章节练习</div><div class="d">按考纲11章逐章刷</div></div>
         <div class="mode-btn" onclick="startMode('wrong')"><div class="ic">❌</div><div class="t">错题练习</div><div class="d">只刷答错的题</div></div>
         <div class="mode-btn" onclick="startMode('random')"><div class="ic">🎲</div><div class="t">随机练习</div><div class="d">随机抽样强化</div></div>
         <div class="mode-btn" onclick="startMode('mock')"><div class="ic">📝</div><div class="t">模拟真题</div><div class="d">全真100题·限时90分</div></div>
+      </div>
+      <div class="card" style="margin-top:14px;cursor:pointer;background:linear-gradient(135deg,#fff7e6,#fff3bf);border:1.5px solid #ffe066" onclick="renderRoundPicker()">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:32px">🎯</div>
+          <div style="flex:1">
+            <div style="font-weight:800;color:#b08900">三轮复习</div>
+            <div class="muted" style="margin-top:3px">每轮每个考点抽 2 题,3 轮覆盖 ≈ ${DATA.chapters.length*6} 题(不重复),逐轮加深印象</div>
+          </div>
+          <div style="font-size:22px;color:#b08900">›</div>
+        </div>
       </div>
       <div class="card" style="margin-top:14px;cursor:pointer" onclick="renderChapters()">
         <div style="font-weight:700">查看章节进度 →</div>
@@ -1025,6 +1138,45 @@ function renderHome(){
     </div>
   </div>`);
   app.appendChild(h);
+  renderBottom('home');
+}
+
+/* ---------- 三轮复习: 选择轮次页 ---------- */
+function renderRoundPicker(){
+  const app=document.getElementById('app');app.innerHTML='';
+  app.appendChild(topbar('🎯 三轮复习', null, ()=>renderHome()));
+  const wrap=el('<div class="wrap"></div>');
+  const rr=getRoundResults();
+  const r1=rr.r1, r2=rr.r2, r3=rr.r3;
+  const getStatus=(r)=>{ const x=rr['r'+r]; if(!x) return {cls:'', label:'未开始', btnText:'开始'}; return x.pass? {cls:'done', label:x.score+'分 ✅', btnText:'再次刷'} : {cls:'done', label:x.score+'分 ❌', btnText:'重做'}; };
+  const cards=[1,2,3].map(r=>{
+    const st=getStatus(r);
+    const isCur = !rr['r'+r] || (rr['r'+r] && !rr['r'+r].pass);
+    return `<div class="rp ${st.cls} ${isCur && !st.cls?'cur':''}" onclick="startMode('round',${r})">
+       <div class="badge">${r===1?'首轮':r===2?'巩固':'冲刺'}</div>
+       <div class="no">${r}</div>
+       <div class="t">第 ${r} 轮</div>
+       <div class="s">${st.label}</div>
+       <button class="btn" style="margin-top:10px;padding:8px;font-size:13px">${st.btnText}</button>
+    </div>`;
+  }).join('');
+  wrap.appendChild(el(`<div class="round-pick">${cards}</div>`));
+  const hist=[1,2,3].some(r=>rr['r'+r]) ? `<div class="card" style="margin-top:14px">
+    <div style="font-weight:700;margin-bottom:8px">历史成绩</div>
+    ${[1,2,3].map(r=>{ const x=rr['r'+r]; return x? `<div class="result-row"><span>第 ${r} 轮</span><span style="color:${x.pass?'var(--green)':'var(--red)'}">${x.score} 分 · ${x.pass?'通过':'未通过'}</span></div>`:`<div class="result-row"><span>第 ${r} 轮</span><span class="muted">未开始</span></div>`; }).join('')}
+    <button class="btn ghost" style="margin-top:10px" onclick="if(confirm('确定重置三轮历史？题库已抽过的题也会清空,可以重新抽题。')){resetRoundsPicked(); resetRoundResults(); renderRoundPicker();}">🔄 重置三轮历史</button>
+  </div>` : '';
+  wrap.appendChild(el(`<div class="round-info" style="margin-top:14px">
+    <h4>📘 三轮复习规则</h4>
+    <ul>
+      <li>每轮从 11 个考点中, <b>每个考点随机抽 2 道题</b>(共 ${DATA.chapters.length*2} 题左右)</li>
+      <li>共进行 <b>3 轮</b>, 每轮抽到的题 <b>不会重复</b>(题库不够时才允许重复)</li>
+      <li>满分按 ${DATA.chapters.length*2}×2 计算, 通过线 = <b>80%</b>(单选1分, 多/案 ≤2分)</li>
+      <li>交卷后即时评分 + 错题解析, 可点击 "下一轮" 直接续刷</li>
+      <li>3 轮全部通过 = 🎉 模拟通关</li>
+    </ul>
+  </div>${hist}`));
+  app.appendChild(wrap);
   renderBottom('home');
 }
 
@@ -1063,10 +1215,17 @@ function startMode(mode, chId, idx){
     items=pool.slice(0, Math.min(30, pool.length));
   }
   else if(mode==='mock'){ items = buildMock(); }
+  else if(mode==='round'){
+    const r = +(typeof chId==='number'?chId:1);
+    items = buildRound(r);
+    if(!items.length){alert('该轮题库不足');return;}
+    state.round = r;
+  }
   if(!items.length){alert('暂无可练习的题目');return;}
-  state.mode=mode; state.items=items; state.idx=(typeof idx==='number')?idx:0; state.answers={};
-  if(mode==='mock'){
-    state.start=Date.now(); state.dur=DATA.meta.timeMinutes*60;
+  state.mode=mode; state.items=items; state.idx=(typeof idx==='number')?idx:0; state.answers={}; state.marked={};
+  if(mode==='mock' || mode==='round'){
+    state.start=Date.now();
+    state.dur = (mode==='mock') ? DATA.meta.timeMinutes*60 : Math.max(30*60, items.length*1.2*60);
     startTimer();
   } else { state.timer&&clearInterval(state.timer); state.timer=null; }
   renderQuestion();
@@ -1089,15 +1248,56 @@ function buildMock(){
   return items;
 }
 
-/* ---------- 计时器(模拟) ---------- */
+/* 三轮复习: 每轮每考点抽2题, 三轮不重复 */
+function buildRound(roundNum){
+  roundNum = +roundNum || 1;
+  const picked = (roundNum===1) ? new Set() : new Set(getRoundsPicked());
+  const byCh = {};
+  ALL.forEach(x=>{
+    if(!byCh[x.chapter]) byCh[x.chapter]=[];
+    byCh[x.chapter].push(x);
+  });
+  const items=[];
+  DATA.chapters.forEach(ch=>{
+    const pool = (byCh[ch.id]||[]).filter(x=>!picked.has(x.id));
+    // 优先用未抽过的；若该章所有题都已抽过则允许重复(保底)
+    let poolForThis = pool.length ? pool : (byCh[ch.id]||[]).slice();
+    for(let i=poolForThis.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[poolForThis[i],poolForThis[j]]=[poolForThis[j],poolForThis[i]];}
+    const take = Math.min(2, poolForThis.length);
+    for(let i=0;i<take;i++){ items.push(poolForThis[i]); picked.add(poolForThis[i].id); }
+  });
+  // 记录抽过的题(给下一轮用)
+  items.forEach(x=>addRoundsPicked(x.id));
+  // 打乱顺序(不按章排)
+  for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}
+  return items;
+}
+function getRoundsPicked(){ try{return JSON.parse(localStorage.getItem(pkey('roundsPicked'))||'[]')||[];}catch(e){return [];} }
+function addRoundsPicked(id){ const a=getRoundsPicked(); if(!a.includes(id)){a.push(id); localStorage.setItem(pkey('roundsPicked'), JSON.stringify(a));} }
+function resetRoundsPicked(){ localStorage.removeItem(pkey('roundsPicked')); }
+function getRoundResults(){ try{return JSON.parse(localStorage.getItem(pkey('roundResults'))||'{}')||{};}catch(e){return {};} }
+function setRoundResult(round, score, pass){ const r=getRoundResults(); r['r'+round]={score:score, pass:!!pass, ts:Date.now()}; localStorage.setItem(pkey('roundResults'), JSON.stringify(r)); }
+function resetRoundResults(){ localStorage.removeItem(pkey('roundResults')); }
+
+/* ---------- 计时器(机考样式) ---------- */
 function startTimer(){
-  const t=document.getElementById('timer');
-  state.timer=setInterval(()=>{
+  if(state.timer){ clearInterval(state.timer); state.timer=null; }
+  const tick=()=>{
     const left=state.dur-Math.floor((Date.now()-state.start)/1000);
-    if(left<=0){clearInterval(state.timer);finishMock();return;}
+    const tb=document.getElementById('examTimerBox');
+    const mLabel=document.getElementById('examTimerLabel');
+    if(left<=0){
+      if(state.timer){clearInterval(state.timer); state.timer=null;}
+      if(tb) tb.textContent='00:00';
+      finishExam();
+      return;
+    }
     const m=String(Math.floor(left/60)).padStart(2,'0'), s=String(left%60).padStart(2,'0');
-    if(t)t.textContent='⏱ '+m+':'+s;
-  },1000);
+    if(tb){ tb.textContent=m+':'+s; tb.classList.remove('warn','danger'); if(left<300) tb.classList.add('danger'); else if(left<900) tb.classList.add('warn'); }
+    if(mLabel) mLabel.textContent='剩余';
+  };
+  tick();
+  state.timer=setInterval(tick,1000);
 }
 
 /* ---------- 顶部栏 ---------- */
@@ -1110,12 +1310,13 @@ function topbar(title, timerText, onBack){
 
 /* ---------- 渲染单题 ---------- */
 function renderQuestion(){
+  if(state.mode==='mock' || state.mode==='round'){ renderExamQuestion(); return; }
   const q=state.items[state.idx];
   const app=document.getElementById('app');app.innerHTML='';
   const total=state.items.length;
   // 顶部
-  let title = state.mode==='mock'?'模拟真题': (state.mode==='wrong'?'错题练习':(state.mode==='random'?'随机练习':'章节练习'));
-  const bar=topbar(title, state.mode==='mock'? '' : null, state.mode==='mock'? finishMock : backToMenu);
+  let title = state.mode==='wrong'?'错题练习':(state.mode==='random'?'随机练习':'章节练习');
+  const bar=topbar(title, null, backToMenu);
   app.appendChild(bar);
   const wrap=el('<div class="wrap"></div>');
   const typeName = q.type==='single'?'单选题':(q.type==='multiple'?'多选题':'案例分析');
@@ -1148,10 +1349,204 @@ function renderQuestion(){
   recordPos(state.mode, q.chapter, state.idx);
 }
 
+/* ---------- 机考风格: 模拟真题 + 三轮复习 ---------- */
+function renderExamQuestion(){
+  const q=state.items[state.idx];
+  const app=document.getElementById('app');app.innerHTML='';
+  const total=state.items.length;
+  // 顶部条
+  const isMock = state.mode==='mock';
+  const modeLabel = isMock? '模拟真题·机考' : ('三轮复习·第 '+state.round+'/3 轮');
+  const modeSub = isMock? '100题 · 90分钟' : ('共 '+total+' 题 · 每考点 2 题');
+  app.appendChild(el(`<div class="exam-topbar">
+     <div class="ttl">${esc(modeLabel)}<span class="sub">${esc(modeSub)}</span></div>
+     <div class="timer-wrap">
+        <span class="meta"><span id="examTimerLabel">剩余</span><span style="opacity:.6;font-size:10px">点击交卷</span></span>
+        <span class="timer-box" id="examTimerBox">00:00</span>
+        <button class="submit-btn" onclick="tryFinish()">交卷</button>
+     </div>
+  </div>`));
+  const body = el('<div class="exam-body"></div>');
+  // 进度条
+  const doneN = state.items.filter(it=> (state.answers[it.id]||[]).length>0).length;
+  const pct = total? Math.round(doneN/total*100):0;
+  body.appendChild(el(`<div class="exam-progress">
+     <span class="nums">已答 <b>${doneN}</b> / ${total}</span>
+     <div class="bar"><i style="width:${pct}%"></i></div>
+     <button class="btn ghost" style="width:auto;padding:6px 12px;font-size:12.5px;margin:0;border-radius:8px" onclick="openPalette()">📋 答题卡</button>
+  </div>`));
+  // 题卡
+  const typeName = q.type==='single'?'单选题':(q.type==='multiple'?'多选题':'案例分析');
+  const tagClass = q.type==='single'?'tag-single':(q.type==='multiple'?'tag-multiple':'tag-case');
+  const realTag = q.real? '<span class="qtag tag-real">真题'+(q.year||'')+'</span>':'';
+  const chName=(DATA.chapters.find(c=>c.id===q.chapter)||{}).name||'';
+  const card = el(`<div class="exam-card">
+     <div class="qhead">
+       <span class="qno">${state.idx+1}</span>
+       <span class="qtag ${tagClass}">${typeName}</span>${realTag}
+       <span class="muted">第${q.chapter}章·${esc(chName)}</span>
+     </div>
+     <div id="caseBgHolder"></div>
+     <div class="stem">${esc(q.stem)}</div>
+     <div class="exam-options" id="examOpts"></div>
+     <div class="exam-helper">
+        ${q.type==='multiple'?'<span class="link" onclick="toggleAll()">☑ 全选/全清</span>':''}
+        <span class="muted">多选规则：少选每项0.5分；含错选得0分</span>
+     </div>
+     <div id="examFb"></div>
+  </div>`);
+  body.appendChild(card);
+  // 案例背景
+  if(q.caseBg){
+    const cb = card.querySelector('#caseBgHolder');
+    cb.innerHTML = `<div class="casebg">${esc(q.caseBg)}</div>`;
+  }
+  // 选项
+  const sel = state.answers[q.id]||[];
+  const optsHost = card.querySelector('#examOpts');
+  q.options.forEach((o,i)=>{
+    const mk = q.type==='multiple'?'☐':'○';
+    const scls = sel.includes(i)?' sel':'';
+    optsHost.appendChild(el(`<div class="opt ${q.type==='multiple'?'multi':''}${scls}" data-i="${i}" onclick="toggleOpt(${i})">
+       <div class="mk">${mk}</div><div class="txt">${esc(o)}</div></div>`));
+  });
+  app.appendChild(body);
+  // 底部操作条
+  const marked = !!state.marked[q.id];
+  const isLast = state.idx===state.items.length-1;
+  const bar = el(`<div class="exam-bar">
+     <button class="btn ghost" onclick="prevQ()" ${state.idx===0?'disabled':''}>上一题</button>
+     <button class="btn mark ${marked?'on':''}" onclick="toggleMark()">${marked?'★ 已标记':'☆ 标记'}</button>
+     ${isLast
+        ? `<button class="btn orange" onclick="tryFinish()">交卷</button>`
+        : `<button class="btn primary" onclick="nextQ()">下一题</button>`}
+  </div>`);
+  document.body.appendChild(bar);
+  // 答题卡 overlay
+  ensurePalette();
+  renderPalette();
+  // 启动计时器(若尚未启动)
+  if(!state.timer){ startTimer(); }
+  else { // 立刻刷新顶部计时
+    const tb=document.getElementById('examTimerBox');
+    const left=state.dur-Math.floor((Date.now()-state.start)/1000);
+    if(tb){ const m=String(Math.floor(left/60)).padStart(2,'0'), s=String(left%60).padStart(2,'0'); tb.textContent=m+':'+s; }
+  }
+  recordPos(state.mode, q.chapter, state.idx);
+}
+
+/* 答题卡 overlay */
+let _paletteTab='single';
+function ensurePalette(){
+  if(document.getElementById('paletteOverlay')) return;
+  const ov = el(`<div class="palette-overlay" id="paletteOverlay" onclick="if(event.target===this)closePalette()">
+    <div class="palette-drawer">
+       <div class="ph"><h3>📋 答题卡</h3><span class="x" onclick="closePalette()">×</span></div>
+       <div class="palette-tabs" id="paletteTabs">
+         <button class="ptab" data-t="single" onclick="switchPaletteTab('single')">单选题</button>
+         <button class="ptab" data-t="multiple" onclick="switchPaletteTab('multiple')">多选题</button>
+         <button class="ptab" data-t="case" onclick="switchPaletteTab('case')">案例分析</button>
+       </div>
+       <div class="palette-legend">
+         <span class="lg"><span class="sw done"></span>已答</span>
+         <span class="lg"><span class="sw cur"></span>当前</span>
+         <span class="lg"><span class="sw mark"></span>已标记</span>
+         <span class="lg"><span class="sw empty"></span>未答</span>
+       </div>
+       <div class="palette-grid" id="paletteGrid"></div>
+       <div style="display:flex;gap:8px;margin-top:14px">
+         <button class="btn ghost" onclick="closePalette()">继续答题</button>
+         <button class="btn" style="background:var(--red)" onclick="confirmFinish()">确认交卷</button>
+       </div>
+    </div>
+  </div>`);
+  document.body.appendChild(ov);
+}
+function openPalette(){ ensurePalette(); renderPalette(); document.getElementById('paletteOverlay').classList.add('show'); }
+function closePalette(){ const ov=document.getElementById('paletteOverlay'); if(ov) ov.classList.remove('show'); }
+function switchPaletteTab(t){ _paletteTab=t; renderPalette(); }
+function renderPalette(){
+  const grid=document.getElementById('paletteGrid'); if(!grid) return;
+  // tabs 高亮
+  document.querySelectorAll('#paletteTabs .ptab').forEach(b=>{
+    b.classList.toggle('act', b.dataset.t===_paletteTab);
+  });
+  grid.innerHTML='';
+  // 收集题目在 items 中按 idx 排序, 过滤类型
+  const filtered = state.items.map((q,i)=>({q,i})).filter(o=>{
+    if(_paletteTab==='single') return o.q.type==='single';
+    if(_paletteTab==='multiple') return o.q.type==='multiple';
+    return o.q.type==='single' && o.q.caseBg; // 案例子题在 ALL 中 type 跟 single/multiple, caseBg 标识
+  });
+  if(!filtered.length){ grid.innerHTML='<div class="muted" style="grid-column:1/-1;text-align:center">该题型暂无题</div>'; return; }
+  filtered.forEach(({q,i})=>{
+    const ans = state.answers[q.id]||[];
+    const mk = state.marked[q.id];
+    const cls = (i===state.idx)?'cur':(ans.length?'done':(mk?'mark':''));
+    const label = (q.type==='single' && q.caseBg)? '案'+(filtered.indexOf({q,i})+1) : (i+1);
+    grid.appendChild(el(`<div class="pcell ${cls}" onclick="gotoQuestion(${i})">${label}</div>`));
+  });
+}
+function gotoQuestion(i){
+  state.idx=i;
+  closePalette();
+  renderExamQuestion();
+  window.scrollTo(0,0);
+}
+function toggleMark(){
+  const id=state.items[state.idx].id;
+  if(state.marked[id]) delete state.marked[id]; else state.marked[id]=1;
+  renderExamQuestion();
+}
+function toggleAll(){
+  const q=state.items[state.idx];
+  if(q.type!=='multiple') return;
+  const cur = state.answers[q.id]||[];
+  if(cur.length===q.options.length){ state.answers[q.id]=[]; }
+  else { state.answers[q.id]=q.options.map((_,i)=>i); }
+  renderExamQuestion();
+}
+function tryFinish(){
+  if(state.mode==='mock' || state.mode==='round'){ confirmFinish(); }
+}
+function confirmFinish(){
+  const total=state.items.length, done=state.items.filter(q=>(state.answers[q.id]||[]).length>0).length;
+  const und = total-done;
+  if(typeof confirm==='function'){
+    if(!confirm(`已答 ${done}/${total} 题，还有 ${und} 题未答。\n确认交卷？未答题将被记 0 分。`)) return;
+  }
+  closePalette();
+  finishExam();
+}
+
 function toggleOpt(i){
   const q=state.items[state.idx];
+  if(state.mode==='mock' || state.mode==='round'){
+    let a=state.answers[q.id]||[];
+    if(q.type==='multiple'){ if(a.includes(i))a=a.filter(x=>x!==i); else a.push(i); }
+    else { a=[i]; }
+    state.answers[q.id]=a;
+    // 仅更新选项选择态 + 顶部进度, 不全量重绘
+    const card=document.querySelector('.exam-card');
+    if(card){
+      card.querySelectorAll('.opt').forEach(o=>{
+        const idx=+o.dataset.i;
+        const sel = a.includes(idx);
+        o.classList.toggle('sel', sel);
+        const mk=o.querySelector('.mk');
+        if(mk){ mk.textContent = q.type==='multiple' ? (sel?'☑':'☐') : (sel?'●':'○'); }
+      });
+    }
+    // 更新顶部已答/进度
+    const doneN=state.items.filter(it=>(state.answers[it.id]||[]).length>0).length;
+    const np=document.querySelector('.exam-progress .nums b');
+    if(np) np.textContent=doneN;
+    const bar=document.querySelector('.exam-progress .bar i');
+    if(bar) bar.style.width=Math.round(doneN/state.items.length*100)+'%';
+    return;
+  }
   const fb=document.getElementById('fb');
-  if(fb.innerHTML) return; // 已提交, 锁定
+  if(fb && fb.innerHTML) return; // 已提交, 锁定
   let a=state.answers[q.id]||[];
   if(q.type==='multiple'){ if(a.includes(i))a=a.filter(x=>x!==i); else a.push(i); }
   else { a=[i]; }
@@ -1190,7 +1585,7 @@ function submitAnswer(){
   if(mind.detail){ html += `<p><b>详细讲解：</b>${esc(mind.detail)}</p>`; }
   if(mind.map){ html += `<details class="mm-box"><summary>展开本章思维导图</summary>${renderMind(mind.map,0)}</details>`; }
   html += `</div></div>`;
-  fb.innerHTML=html;
+  if(fb) fb.innerHTML=html;
   // 标记选项
   const opts=document.querySelectorAll('.opt');
   opts.forEach(o=>{
@@ -1199,7 +1594,7 @@ function submitAnswer(){
     else if(a.includes(i)) o.classList.add('wrong');
   });
   const sb=document.getElementById('submitBtn'); if(sb)sb.disabled=true;
-  window.scrollTo(0, fb.offsetTop-20);
+  if(fb) window.scrollTo(0, fb.offsetTop-20);
 }
 
 function isCorrect(q,a){
@@ -1210,37 +1605,88 @@ function isCorrect(q,a){
   return true;
 }
 
-function prevQ(){ if(state.idx>0){state.idx--;renderQuestion();} }
+function prevQ(){
+  if(state.idx>0){ state.idx--; renderQuestion(); }
+}
 function nextQ(){
-  if(state.idx<state.items.length-1){state.idx++;renderQuestion();}
-  else if(state.mode==='mock'){ finishMock(); }
+  if(state.idx < state.items.length-1){ state.idx++; renderQuestion(); return; }
+  // 最后一题
+  if(state.mode==='mock' || state.mode==='round'){ tryFinish(); }
   else { alert('已经是最后一题啦'); }
 }
 
-/* ---------- 模拟交卷 ---------- */
-function finishMock(){
-  if(state.timer)clearInterval(state.timer);
+/* ---------- 机考交卷(mock / round) ---------- */
+function finishExam(){
+  if(state.timer){clearInterval(state.timer); state.timer=null;}
+  // 清掉 exam-bar / palette
+  const eb=document.querySelector('.exam-bar'); if(eb) eb.remove();
+  const ov=document.getElementById('paletteOverlay'); if(ov) ov.remove();
+  // 计分
   let score=0; const wrongList=[];
   state.items.forEach(q=>{
     const a=state.answers[q.id]||[];
     score += scoreOf(q,a);
     if(!isCorrect(q,a)) wrongList.push(q.id);
+    addUnique(STORE.done, q.id);
+    if(isCorrect(q,a)){ addUnique(STORE.correct, q.id); removeUnique(STORE.wrong, q.id); }
+    else { addUnique(STORE.wrong, q.id); }
   });
-  const pass = score>=DATA.meta.passScore;
+  // round 模式: 满分按题数*2(单选1, 多/案 2封顶); round 通过线 = 该轮总分 ≥ 80%
+  const isMock = state.mode==='mock';
+  const totalScore = isMock ? DATA.meta.totalScore : (state.items.length*2);
+  const passLine = isMock ? DATA.meta.passScore : Math.round(totalScore*0.8);
+  const pass = score>=passLine;
+  if(!isMock && state.round){ setRoundResult(state.round, score, pass); }
   const app=document.getElementById('app');app.innerHTML='';
-  let html=`<header style="background:${pass?'linear-gradient(135deg,#2f9e44,#51cf66)':'linear-gradient(135deg,#e03131,#fa5252)'}">
-     <h1 class="center">模拟考试结果</h1>
-     <div class="meta center">满分${DATA.meta.totalScore} · 及格${DATA.meta.passScore}</div></header>
+  const headerBg = pass?'linear-gradient(135deg,#2f9e44,#51cf66)':'linear-gradient(135deg,#e03131,#fa5252)';
+  const title = isMock ? '模拟考试结果' : ('三轮复习 · 第'+state.round+'/3 轮 成绩');
+  let nextOnclick, nextText;
+  if(isMock){
+    nextOnclick = "startMode('mock')"; nextText = '再模拟一次';
+  } else if(state.round<3){
+    nextOnclick = "startMode('round',"+(state.round+1)+")"; nextText = '进入第 '+(state.round+1)+' 轮 →';
+  } else {
+    nextOnclick = "resetRoundsPicked();resetRoundResults();renderHome()"; nextText = '重新开始三轮';
+  }
+  const backOnclick = isMock? "renderHome()" : "renderRoundPicker()";
+  const backText = isMock? '返回首页' : '查看进度';
+  let html=`<header style="background:${headerBg}">
+     <h1 class="center">${title}</h1>
+     <div class="meta center">满分${totalScore} · 及格${passLine}</div></header>
      <div class="wrap"><div class="card center">
        <div class="big ${pass?'pass':'fail'}">${score}</div>
        <div class="${pass?'pass':'fail'}" style="font-weight:700">${pass?'🎉 恭喜，已达到及格线！':'未达及格线，继续加油'}</div>
-       <div class="muted" style="margin-top:6px">共 ${state.items.length} 题 · 错题 ${wrongList.length} 题</div>
-       <button class="btn" style="margin-top:14px" onclick="startMode('mock')">再模拟一次</button>
-       <button class="btn ghost" onclick="renderHome()">返回首页</button>
-     </div><div class="card"><div style="font-weight:700;margin-bottom:6px">错题回顾（点击查看解析）</div><div id="wl"></div></div></div>`;
+       <div class="muted" style="margin-top:6px">共 ${state.items.length} 题 · 错题 ${wrongList.length} 题 · 用时 ${usedMinutes()} 分</div>
+       <div style="display:flex;gap:10px;margin-top:14px">
+         <button class="btn" onclick="${nextOnclick}">${nextText}</button>
+         <button class="btn ghost" onclick="${backOnclick}">${backText}</button>
+       </div>
+     </div>`;
+  // 三轮复习进度卡
+  if(!isMock){
+    const rr=getRoundResults();
+    let nextBtn='';
+    if(state.round<3){
+      nextBtn = `<button class="btn" style="margin-top:10px" onclick="startMode('round',${state.round+1})">开始第 ${state.round+1} 轮 →</button>`;
+    } else {
+      const allPass = [1,2,3].every(r=> rr['r'+r] && rr['r'+r].pass);
+      if(allPass){ nextBtn = `<button class="btn" style="margin-top:10px;background:var(--green)" onclick="renderHome()">🏆 三轮全过！返回首页</button>`; }
+      else { nextBtn = `<button class="btn orange" style="margin-top:10px" onclick="resetRoundsPicked()">重置三轮历史,从头开始</button>`; }
+    }
+    html += `<div class="card" style="margin-top:12px">
+       <div style="font-weight:700;margin-bottom:8px">📊 三轮通关情况</div>
+       ${[1,2,3].map(r=>{
+         const it=rr['r'+r];
+         if(!it) return `<div class="result-row"><span>第 ${r} 轮</span><span class="muted">未开始</span></div>`;
+         return `<div class="result-row"><span>第 ${r} 轮</span><span style="color:${it.pass?'var(--green)':'var(--red)'}">${it.score} 分 · ${it.pass?'✅ 通过':'❌ 未过'}</span></div>`;
+       }).join('')}
+       ${nextBtn}
+     </div>`;
+  }
+  html += `<div class="card"><div style="font-weight:700;margin-bottom:6px">📝 错题回顾（点击看解析）</div><div id="wl"></div></div></div>`;
   app.appendChild(el(html));
   const wl=document.getElementById('wl');
-  if(!wrongList.length){wl.innerHTML='<div class="muted">全部正确，太强了！</div>';}
+  if(!wrongList.length){ wl.innerHTML='<div class="muted">全部正确，太强了！</div>'; }
   else{
     wrongList.forEach(id=>{
       const q=state.items.find(x=>x.id===id);
@@ -1249,13 +1695,34 @@ function finishMock(){
         <div class="muted">正确答案：${q.answer.map(i=>String.fromCharCode(65+i)).join('、')}</div></div>`));
     });
   }
-  renderBottom('result');
+  // 清理考试模式
+  state.timer=null; state.mode='home'; state.round=null;
+  renderBottom(isMock?'home':'home');
+}
+function usedMinutes(){
+  if(!state.start) return 0;
+  return Math.round((Date.now()-state.start)/60000);
+}
+function openRound(){
+  // renderRoundPicker 用已有的渲染
+  renderRoundPicker();
 }
 
 function reviewWrong(id){
   const q=state.items.find(x=>x.id===id)||ALL.find(x=>x.id===id);
   if(!q)return;
-  alert('【正确答案】'+q.answer.map(i=>String.fromCharCode(65+i)).join('、')+'\n\n【解析】'+q.analysis);
+  const ansTxt = q.answer.map(i=>String.fromCharCode(65+i)).join('、');
+  const mind = DATA.mind[q.chapter] || {};
+  const oa = (q.oa||[]).map((t,i)=>{
+    const mk = q.answer.includes(i) ? '【正】' : '【误】';
+    return mk + String.fromCharCode(65+i) + '. ' + t;
+  }).join('\n');
+  alert(
+    '【正确答案】'+ansTxt+'\n\n' +
+    '【选项解析】\n'+oa+'\n\n' +
+    '【整体解析】'+q.analysis+'\n\n' +
+    '【出题思路】'+(q.logic||'—')
+  );
 }
 
 function scoreOf(q,a){
@@ -1267,8 +1734,12 @@ function scoreOf(q,a){
 }
 
 function backToMenu(){
-  if(state.timer)clearInterval(state.timer);
-  if(state.mode==='mock'){ if(!confirm('退出模拟考试？当前进度将不计入成绩。')) return; }
+  if(state.timer){clearInterval(state.timer); state.timer=null;}
+  const eb=document.querySelector('.exam-bar'); if(eb) eb.remove();
+  const ov=document.getElementById('paletteOverlay'); if(ov) ov.remove();
+  if(state.mode==='mock' || state.mode==='round'){
+    if(typeof confirm==='function' && !confirm('退出本次考试？当前进度将不计入成绩。')) return;
+  }
   renderHome();
 }
 

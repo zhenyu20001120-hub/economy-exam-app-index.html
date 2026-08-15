@@ -1,8 +1,12 @@
 # 构建/上传过程产生的临时产物(非源码, 不纳入版本管理)
 _c.js
+_c_check.js
 _script.js
+_c_remote_check.html
 body.json
 nojekyll.json
+_raw_check.html
+_remote_check.html
 
 # Python 缓存
 __pycache__/

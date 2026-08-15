@@ -74,8 +74,42 @@ const driver = `
   run("startMode random", ()=>startMode("random"));
   run("startMode wrong (empty->alert)", ()=>startMode("wrong"));
   run("startMode mock", ()=>startMode("mock"));
-  run("finishMock", ()=>finishMock());
+  run("finishMock (renamed to finishExam)", ()=>finishExam());
   run("buildMock size=100", ()=>{ const m=buildMock(); if(m.length!==100) throw new Error("mock size="+m.length); });
+
+  // 三轮复习
+  run("round: buildRound(1) size", ()=>{
+    resetRoundsPicked(); resetRoundResults();
+    const r1=buildRound(1);
+    if(r1.length < 11) throw new Error("round1 too small="+r1.length);
+  });
+  run("round: buildRound(2) no overlap with round1", ()=>{
+    const r1=buildRound(1);
+    const r2=buildRound(2);
+    const s1=new Set(r1.map(x=>x.id));
+    let overlap=0; r2.forEach(x=>{ if(s1.has(x.id)) overlap++; });
+    if(overlap) throw new Error("overlap="+overlap);
+  });
+  run("round: buildRound(3) no overlap with 1+2", ()=>{
+    const r3=buildRound(3);
+    const all=getRoundsPicked();
+    if(all.length < 33) throw new Error("picked too few="+all.length);
+    if(r3.length < 11) throw new Error("round3 too small="+r3.length);
+  });
+  run("round: startMode('round',2) renders exam UI", ()=>{
+    resetRoundsPicked(); resetRoundResults();
+    setUser('alice');
+    startMode('round', 2);
+    if(state.mode!=='round' || state.round!==2) throw new Error('state='+JSON.stringify({mode:state.mode,round:state.round}));
+  });
+  run("round: renderRoundPicker", ()=>renderRoundPicker());
+  run("round: setRoundResult + getRoundResults", ()=>{
+    setRoundResult(1, 80, true);
+    setRoundResult(2, 75, false);
+    const rr=getRoundResults();
+    if(!rr.r1||rr.r1.score!==80) throw new Error("r1="+JSON.stringify(rr.r1));
+    if(!rr.r2||rr.r2.score!==75||rr.r2.pass!==false) throw new Error("r2="+JSON.stringify(rr.r2));
+  });
   run("flatItems>=490", ()=>{ if(flatItems().length<490) throw new Error("items="+flatItems().length); });
   run("isCorrect", ()=>{ if(isCorrect({answer:[0,1]},{0:0,1:1,length:2,slice:()=>[0,1]})===false) throw new Error("should true"); });
   run("renderMind(ch1)", ()=>{ const h=renderMind(DATA.mind[1].map,0); if(!h.includes("企业战略")){ console.log("   >> h.slice:", h.slice(0,160)); throw new Error("no content, len="+h.length); } });
