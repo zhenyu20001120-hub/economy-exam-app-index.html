@@ -626,6 +626,18 @@ def _derive_logic(item):
     tmap = {"single": "单选题", "multiple": "多选题", "case": "案例分析题"}
     return "本题为%s，考查本章核心考点；抓住题干关键词、区分易混概念即可准确判定。" % tmap.get(item["type"], "题")
 
+def _derive_kp(item):
+    """本题对应知识点(考点): 优先用解析首句, 兜底用出题思路。"""
+    ana = (item.get("analysis") or "").strip()
+    if ana:
+        s = ana.split("。")[0].strip()
+        if s:
+            return s + ("。" if not s.endswith("。") else "")
+    lg = item.get("logic") or ""
+    if lg:
+        return lg.split("。")[0].strip() + ("。" if not lg.strip().endswith("。") else "")
+    return ""
+
 for _it in Q:
     if _it["type"] == "case":
         for _s in _it.get("subs", []):
@@ -633,11 +645,15 @@ for _it in Q:
                 _s["oa"] = _derive_oa(_s)
             if not _s.get("logic"):
                 _s["logic"] = _derive_logic(_s)
+            if not _s.get("kp"):
+                _s["kp"] = _derive_kp(_s)
     else:
         if not _it.get("oa"):
             _it["oa"] = _derive_oa(_it)
         if not _it.get("logic"):
             _it["logic"] = _derive_logic(_it)
+        if not _it.get("kp"):
+            _it["kp"] = _derive_kp(_it)
 
 # ============================ 生成 index.html ============================
 HTML = r"""<!DOCTYPE html>
@@ -711,6 +727,10 @@ header .meta{margin-top:6px;font-size:12.5px;opacity:.92}
 .analysis .ok{color:var(--green);font-weight:700}
 .analysis .no{color:var(--red);font-weight:700}
 .analysis p{margin:6px 0 0;font-size:14.5px;color:#374151;white-space:pre-wrap}
+/* 本题对应知识点(学习模式核心提示) */
+.kp-callout{background:linear-gradient(135deg,#eef2ff,#f3f0ff);border:1px solid #c7d2fe;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:14.5px;color:#1e2a5a;line-height:1.6}
+.kp-callout b{color:#3b5bdb}
+.kp-where{margin-top:6px;font-size:12.5px;color:#5f6b8a;border-top:1px dashed #c7d2fe;padding-top:6px}
 /* 三层解析 */
 .layer{border-top:1px dashed var(--line);margin-top:12px;padding-top:10px}
 .layer:first-of-type{border-top:none;margin-top:8px;padding-top:0}
@@ -886,14 +906,15 @@ header .meta{margin-top:6px;font-size:12.5px;opacity:.92}
 const DATA = __DATA__;
 const STORE = { wrong:'wrong', done:'done', correct:'correct', fav:'fav' };
 const USERS_KEY='ee_users', USER_KEY='ee_user';
-function curUser(){ return localStorage.getItem(USER_KEY) || ''; }
-function setUser(u){ u=(u||'').toString().trim().slice(0,20); if(!u) return false; localStorage.setItem(USER_KEY, u);
+function curUser(){ try{ return localStorage.getItem(USER_KEY) || ''; }catch(e){ return ''; } }
+function setUser(u){ u=(u||'').toString().trim().slice(0,20); if(!u) return false; lsSet(USER_KEY, u);
   let us=[]; try{ us=JSON.parse(localStorage.getItem(USERS_KEY)||'[]')||[]; }catch(e){ us=[]; }
-  if(!us.includes(u)){ us.push(u); localStorage.setItem(USERS_KEY, JSON.stringify(us)); } return true; }
+  if(!us.includes(u)){ us.push(u); lsSet(USERS_KEY, JSON.stringify(us)); } return true; }
 function listUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY)||'[]')||[]; }catch(e){ return []; } }
-function clearUser(){ localStorage.removeItem(USER_KEY); }
+function clearUser(){ lsRemove(USER_KEY); }
 function pkey(base){ const u=curUser()||'guest'; return 'ee_'+u+'_'+base; }
 function lsSet(k,v){ try{ localStorage.setItem(k, v); }catch(e){ /* 隐私模式/超额时静默失败, 不阻断答题 */ } }
+function lsRemove(k){ try{ localStorage.removeItem(k); }catch(e){} }
 function load(k){try{return JSON.parse(localStorage.getItem(pkey(k)))||[]}catch(e){return[]}}
 function save(k,v){ lsSet(pkey(k), JSON.stringify(v)); }
 function addUnique(k,id){let a=load(k);if(!a.includes(id)){a.push(id);save(k,a)}}
@@ -909,7 +930,7 @@ function getLastPos(){ try{ return JSON.parse(localStorage.getItem(pkey('lastpos
 function setLastPos(p){ lsSet(pkey('lastpos'), JSON.stringify(p)); }
 let _pushTimer=null;
 function recordPos(mode, ch, idx){
-  setLastPos({mode:mode, chapter:ch, idx:idx, ts:Date.now()});
+  setLastPos({mode:mode, chapter:ch, idx:idx, round:(typeof state!=='undefined'?state.round:null), ts:Date.now()});
   schedulePush();
 }
 function getProgress(){
@@ -967,8 +988,8 @@ function setSyncStatus(txt){
   const e=document.getElementById('syncHint'); if(e) e.textContent=txt;
   const s=document.getElementById('syncStatus'); if(s) s.textContent=txt;
 }
-function modeName(m){ return {chapter:'章节练习',wrong:'错题练习',random:'随机练习',mock:'模拟真题'}[m]||'练习'; }
-function resumeLast(){ const p=getLastPos(); if(!p||!p.mode) return; startMode(p.mode, p.chapter, p.idx); }
+function modeName(m){ return {chapter:'章节练习',wrong:'错题练习',random:'随机练习',mock:'模拟真题',round:'三轮学习'}[m]||'练习'; }
+function resumeLast(){ const p=getLastPos(); if(!p||!p.mode) return; if(p.mode==='round'){ startMode('round', (p.round||1), p.idx); } else { startMode(p.mode, p.chapter, p.idx); } }
 function renderSettings(){
   const app=document.getElementById('app'); app.innerHTML='';
   app.appendChild(topbar('云同步与设置', null, ()=>renderHome()));
@@ -1037,7 +1058,7 @@ function renderUserGate(){
 }
 function enterUserFromInput(){ const v=document.getElementById('userName'); if(v) enterUser(v.value); }
 function enterUser(name){
-  name=(name||'').toString().trim();
+  name=(name||'').toString().trim().replace(/[\\'"]/g,'').slice(0,20);
   if(!name){ if(typeof alert!=='undefined') alert('请先输入一个用户名'); return; }
   if(name.length>20) name=name.slice(0,20);
   setUser(name);
@@ -1062,11 +1083,11 @@ function flatItems(){
     if(q.type==='case'){
       (q.subs||[]).forEach(s=>{
         items.push({id:s.id, chapter:q.chapter, type:s.type, stem:s.stem,
-          options:s.options, answer:s.answer, analysis:s.analysis, oa:s.oa||[], logic:s.logic||'', caseBg:q.case});
+          options:s.options, answer:s.answer, analysis:s.analysis, oa:s.oa||[], logic:s.logic||'', kp:s.kp||'', caseBg:q.case});
       });
     } else {
       items.push({id:q.id, chapter:q.chapter, type:q.type, stem:q.stem,
-        options:q.options, answer:q.answer, analysis:q.analysis, oa:q.oa||[], logic:q.logic||'', real:q.real, year:q.year});
+        options:q.options, answer:q.answer, analysis:q.analysis, oa:q.oa||[], logic:q.logic||'', kp:q.kp||'', real:q.real, year:q.year});
     }
   });
   return items;
@@ -1074,7 +1095,7 @@ function flatItems(){
 const ALL = flatItems();
 const byChapter = ch => ALL.filter(x=>x.chapter===ch);
 
-const state = {mode:'home', items:[], idx:0, answers:{}, start:0, timer:null, total:0, dur:0, finished:false, untimed:false};
+const state = {mode:'home', items:[], idx:0, answers:{}, submitted:{}, start:0, timer:null, total:0, dur:0, finished:false, untimed:false, round:null, roundDone:0, roundCorrect:0};
 
 function $(h){return h;}
 function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
@@ -1095,7 +1116,7 @@ function renderHome(){
        <div style="font-size:22px;color:var(--primary)">›</div></div>` : '';
   const rr=getRoundResults();
   const roundSummary = [1,2,3].map(r=>rr['r'+r]).some(Boolean) ? `<div class="card resume" style="margin-top:14px;cursor:pointer" onclick="renderRoundPicker()">
-       <div><div style="font-weight:700">🎯 三轮复习进度</div><div class="muted" style="margin-top:4px">${[1,2,3].map(r=>{const x=rr['r'+r]; return x?`第${r}轮 ${x.score}分 ${x.pass?'✅':'❌'}`:`第${r}轮 未开始`}).join('  ·  ')}</div></div>
+       <div><div style="font-weight:700">🎯 三轮学习进度</div><div class="muted" style="margin-top:4px">${[1,2,3].map(r=>{const x=rr['r'+r]; return x?`第${r}轮 正确率${x.acc}%`:`第${r}轮 未开始`}).join('  ·  ')}</div></div>
        <div style="font-size:22px;color:var(--primary)">›</div></div>` : '';
   const app=document.getElementById('app');
   app.innerHTML='';
@@ -1122,8 +1143,8 @@ function renderHome(){
         <div style="display:flex;align-items:center;gap:12px">
           <div style="font-size:32px">🎯</div>
           <div style="flex:1">
-            <div style="font-weight:800;color:#b08900">三轮复习</div>
-            <div class="muted" style="margin-top:3px">每轮每个考点抽 2 题,3 轮覆盖 ≈ ${DATA.chapters.length*6} 题(不重复),逐轮加深印象</div>
+            <div style="font-weight:800;color:#b08900">三轮学习</div>
+            <div class="muted" style="margin-top:3px">逐题提交即判对错 + 详细解析 + 对应知识点；每轮≥160题按章节学，三轮学透再去模拟考试</div>
           </div>
           <div style="font-size:22px;color:#b08900">›</div>
         </div>
@@ -1145,17 +1166,16 @@ function renderHome(){
   renderBottom('home');
 }
 
-/* ---------- 三轮复习: 选择轮次页 ---------- */
+/* ---------- 三轮学习: 选择轮次页 ---------- */
 function renderRoundPicker(){
   const app=document.getElementById('app');app.innerHTML='';
-  app.appendChild(topbar('🎯 三轮复习', null, ()=>renderHome()));
+  app.appendChild(topbar('🎯 三轮学习', null, ()=>renderHome()));
   const wrap=el('<div class="wrap"></div>');
   const rr=getRoundResults();
-  const r1=rr.r1, r2=rr.r2, r3=rr.r3;
-  const getStatus=(r)=>{ const x=rr['r'+r]; if(!x) return {cls:'', label:'未开始', btnText:'开始'}; return x.pass? {cls:'done', label:x.score+'分 ✅', btnText:'再次刷'} : {cls:'done', label:x.score+'分 ❌', btnText:'重做'}; };
+  const getStatus=(r)=>{ const x=rr['r'+r]; if(!x) return {cls:'', label:'未开始', btnText:'开始学习'}; return {cls:'done', label:(x.acc!=null?'正确率 '+x.acc+'% ✅':'已完成 ✅'), btnText:'再学一遍'}; };
   const cards=[1,2,3].map(r=>{
     const st=getStatus(r);
-    const isCur = !rr['r'+r] || (rr['r'+r] && !rr['r'+r].pass);
+    const isCur = !rr['r'+r];
     return `<div class="rp ${st.cls} ${isCur && !st.cls?'cur':''}" onclick="startMode('round',${r})">
        <div class="badge">${r===1?'首轮':r===2?'巩固':'冲刺'}</div>
        <div class="no">${r}</div>
@@ -1166,18 +1186,17 @@ function renderRoundPicker(){
   }).join('');
   wrap.appendChild(el(`<div class="round-pick">${cards}</div>`));
   const hist=[1,2,3].some(r=>rr['r'+r]) ? `<div class="card" style="margin-top:14px">
-    <div style="font-weight:700;margin-bottom:8px">历史成绩</div>
-    ${[1,2,3].map(r=>{ const x=rr['r'+r]; return x? `<div class="result-row"><span>第 ${r} 轮</span><span style="color:${x.pass?'var(--green)':'var(--red)'}">${x.score} 分 · ${x.pass?'通过':'未通过'}</span></div>`:`<div class="result-row"><span>第 ${r} 轮</span><span class="muted">未开始</span></div>`; }).join('')}
+    <div style="font-weight:700;margin-bottom:8px">学习记录</div>
+    ${[1,2,3].map(r=>{ const x=rr['r'+r]; return x? `<div class="result-row"><span>第 ${r} 轮</span><span style="color:var(--green)">已学 ${x.done} 题 · 正确率 ${x.acc}%</span></div>`:`<div class="result-row"><span>第 ${r} 轮</span><span class="muted">未开始</span></div>`; }).join('')}
     <button class="btn ghost" style="margin-top:10px" onclick="if(confirm('确定重置三轮历史？题库已抽过的题也会清空,可以重新抽题。')){resetRoundsPicked(); resetRoundResults(); renderRoundPicker();}">🔄 重置三轮历史</button>
   </div>` : '';
   wrap.appendChild(el(`<div class="round-info" style="margin-top:14px">
-    <h4>📘 三轮复习规则</h4>
+    <h4>📘 三轮学习规则</h4>
     <ul>
       <li>每轮从 <b>全库 ${ALL.length} 题</b> 抽 <b>≥160 题</b>, <b>按章节顺序</b>从第1章学到最后一章, 覆盖工商管理所有细节考点</li>
       <li><b>不计时</b> 自由作答；共 <b>3 轮</b>(首轮→巩固→冲刺), 三轮抽到的题 <b>互不重复</b>, 三轮下来把整本题库刷透</li>
-      <li>满分按题型求和(单选1分 / 多选·案例封顶2分), 通过线 = <b>80%</b></li>
-      <li>交卷后即时评分 + 错题点开看 <b>三层解析</b>(选项逐项 / 出题思路 / 本章思维导图)</li>
-      <li>3 轮全部通过 = 🎉 模拟通关</li>
+      <li>每做一题点 <b>提交</b>, 立即提示 <b>对错</b>, 并展开 <b>详细解析 + 本题对应知识点</b>, 边做边学</li>
+      <li>学完一轮看本轮 <b>正确率</b>, 错题自动进 <b>错题本</b>；三轮学完后再去 <b>模拟真题</b> 检验</li>
     </ul>
   </div>${hist}`));
   app.appendChild(wrap);
@@ -1226,14 +1245,15 @@ function startMode(mode, chId, idx){
     state.round = r;
   }
   if(!items.length){alert('暂无可练习的题目');return;}
-  state.mode=mode; state.items=items; state.idx=(typeof idx==='number')?idx:0; state.answers={}; state.marked={};
+  state.mode=mode; state.items=items; state.idx=(typeof idx==='number')?idx:0; state.answers={}; state.submitted={}; state.marked={};
   state.finished=false; state.untimed=false;
+  state.roundDone=0; state.roundCorrect=0;
   if(mode==='mock'){
     state.start=Date.now();
     state.dur = DATA.meta.timeMinutes*60;
     startTimer();
   } else if(mode==='round'){
-    // 三轮复习不计时
+    // 三轮学习不计时
     state.start=null; state.dur=0; state.untimed=true; state.timer=null;
   } else { state.timer&&clearInterval(state.timer); state.timer=null; }
   renderQuestion();
@@ -1256,9 +1276,16 @@ function buildMock(){
   return items;
 }
 
-/* 三轮复习: 每轮按章节顺序, 每轮≥160题, 三轮跨轮去重、累计覆盖全库(所有细节题) */
+/* 三轮学习: 每轮按章节顺序, 每轮≥160题, 三轮跨轮去重、累计覆盖全库(所有细节题) */
 function buildRound(roundNum){
   roundNum = +roundNum || 1;
+  // 已为该轮抽好题 → 直接复用(支持"再学一遍"返回同一批题, 不重抽、不破坏跨轮去重/覆盖保证)
+  const stored = getRoundQuestions(roundNum);
+  if(stored && stored.length){
+    const m={}; ALL.forEach(x=>{ if(!(x.id in m)) m[x.id]=x; });
+    const items = stored.map(id=>m[id]).filter(Boolean);
+    if(items.length){ return items; }
+  }
   let picked = new Set(getRoundsPicked());
   let pool = ALL.filter(x=>!picked.has(x.id));
   if(pool.length===0){ // 三轮已全部抽完 → 重置从头再练
@@ -1286,6 +1313,7 @@ function buildRound(roundNum){
   // 跨轮去重写回(一次性写, 避免逐题写 localStorage)
   const a=getRoundsPicked(); chosen.forEach(x=>{ if(!a.includes(x.id)) a.push(x.id); });
   lsSet(pkey('roundsPicked'), JSON.stringify(a));
+  setRoundQuestions(roundNum, chosen.map(x=>x.id));
   // 按章节升序排列(同章保持题源顺序): 实现"从第一章到最后一章学一遍"
   const pos={}; ALL.forEach((x,i)=>{ if(!(x.id in pos)) pos[x.id]=i; });
   chosen.sort((x,y)=> (x.chapter||0)-(y.chapter||0) || (pos[x.id]-pos[y.id]));
@@ -1293,10 +1321,13 @@ function buildRound(roundNum){
 }
 function getRoundsPicked(){ try{return JSON.parse(localStorage.getItem(pkey('roundsPicked'))||'[]')||[];}catch(e){return [];} }
 function addRoundsPicked(id){ const a=getRoundsPicked(); if(!a.includes(id)){a.push(id); lsSet(pkey('roundsPicked'), JSON.stringify(a));} }
-function resetRoundsPicked(){ localStorage.removeItem(pkey('roundsPicked')); }
+function resetRoundsPicked(){ lsRemove(pkey('roundsPicked')); lsRemove(pkey('roundQuestions')); }
+function getRoundQuestions(round){ try{ const o=JSON.parse(localStorage.getItem(pkey('roundQuestions'))||'{}')||{}; return o[round]||null; }catch(e){ return null; } }
+function setRoundQuestions(round, ids){ try{ const o=JSON.parse(localStorage.getItem(pkey('roundQuestions'))||'{}')||{}; o[round]=ids; lsSet(pkey('roundQuestions'), JSON.stringify(o)); }catch(e){} }
 function getRoundResults(){ try{return JSON.parse(localStorage.getItem(pkey('roundResults'))||'{}')||{};}catch(e){return {};} }
-function setRoundResult(round, score, pass){ const r=getRoundResults(); r['r'+round]={score:score, pass:!!pass, ts:Date.now()}; lsSet(pkey('roundResults'), JSON.stringify(r)); }
-function resetRoundResults(){ localStorage.removeItem(pkey('roundResults')); }
+/* 三轮学习: 记录本轮学习情况(已学题数 / 正确数 / 正确率), 不以分数论 */
+function setRoundResult(round, done, correct, acc){ const r=getRoundResults(); r['r'+round]={done:done, correct:correct, acc:acc, ts:Date.now()}; lsSet(pkey('roundResults'), JSON.stringify(r)); }
+function resetRoundResults(){ lsRemove(pkey('roundResults')); }
 
 /* ---------- 计时器(机考样式) ---------- */
 function startTimer(){
@@ -1329,22 +1360,38 @@ function topbar(title, timerText, onBack){
 
 /* ---------- 渲染单题 ---------- */
 function renderQuestion(){
-  if(state.mode==='mock' || state.mode==='round'){ renderExamQuestion(); return; }
+  if(state.mode==='mock'){ renderExamQuestion(); return; }
   const q=state.items[state.idx];
   const app=document.getElementById('app');app.innerHTML='';
   const total=state.items.length;
+  const isLearn = state.mode==='round';
   // 顶部
-  let title = state.mode==='wrong'?'错题练习':(state.mode==='random'?'随机练习':'章节练习');
-  const bar=topbar(title, null, backToMenu);
+  let title, backFn;
+  if(isLearn){ title = '三轮学习 · 第 '+state.round+'/3 轮'; backFn = backToMenu; }
+  else { title = state.mode==='wrong'?'错题练习':(state.mode==='random'?'随机练习':'章节练习'); backFn = backToMenu; }
+  const bar=topbar(title, null, backFn);
   app.appendChild(bar);
   const wrap=el('<div class="wrap"></div>');
   const typeName = q.type==='single'?'单选题':(q.type==='multiple'?'多选题':'案例分析');
   const tagClass = q.type==='single'?'tag-single':(q.type==='multiple'?'tag-multiple':'tag-case');
   const realTag = q.real? '<span class="qtag tag-real">真题'+ (q.year||'') +'</span>':'';
   const chName=(DATA.chapters.find(c=>c.id===q.chapter)||{}).name||'';
+  const modeSub = isLearn? '<span class="qtag" style="background:#eef2ff;color:#3b5bdb">🕊 不计时 · 按章节顺序</span>' : '';
+  // 学习模式: 顶部进度条(已学/总)
+  let progressHtml='';
+  if(isLearn){
+    const doneN = (state.roundDone||0);
+    const pct = total? Math.round(doneN/total*100):0;
+    progressHtml = `<div class="exam-progress" style="margin:10px 0 0">
+       <span class="nums">已学 <b id="learnDoneN">${doneN}</b> / ${total}</span>
+       <div class="bar"><i style="width:${pct}%"></i></div>
+       <span class="muted">正确率 <b id="learnAcc" style="color:var(--green)">${ (state.roundDone||0)? Math.round((state.roundCorrect||0)/(state.roundDone||0)*100):0 }%</b></span>
+    </div>`;
+  }
   let html=`<div class="card">
      <div class="qtype">${state.idx+1}/${total}　<span class="qtag ${tagClass}">${typeName}</span>${realTag}
-        <span class="muted">第${q.chapter}章·${esc(chName)}</span></div>`;
+        <span class="muted">第${q.chapter}章·${esc(chName)}</span> ${modeSub}</div>
+     ${progressHtml}`;
   if(q.caseBg){ html+=`<div class="casebg">${esc(q.caseBg)}</div>`; }
   html+=`<div class="stem">${esc(q.stem)}</div>`;
   // 选项
@@ -1355,14 +1402,26 @@ function renderQuestion(){
     html+=`<div class="opt ${q.type==='multiple'?'multi':''}${scls}" data-i="${i}" onclick="toggleOpt(${i})">
        <div class="mk">${mk}</div><div>${esc(o)}</div></div>`;
   });
-  html+=`<button class="btn" id="submitBtn" onclick="submitAnswer()">提交答案</button>`;
+  // 已提交则恢复反馈态(选项标色 + 解析), 支持回看
+  const fbState = state.answers[q.id] && (state.submitted&&state.submitted[q.id]);
+  html+=`<button class="btn" id="submitBtn" onclick="submitAnswer()" ${fbState?'disabled':''}>${fbState?'已提交 ✓':'提交答案'}</button>`;
   html+=`<div id="fb"></div>`;
-  html+=`<div class="nav">
-       <button class="btn ghost" onclick="prevQ()">上一题</button>
-       <button class="btn ghost" onclick="nextQ()">下一题</button></div>`;
+  // 导航: 学习模式最后一题显示"完成本轮"
+  const isLast = state.idx===state.items.length-1;
+  let navHtml = `<div class="nav">
+       <button class="btn ghost" onclick="prevQ()">上一题</button>`;
+  if(isLearn && isLast){
+    navHtml += `<button class="btn orange" onclick="finishRound()">完成本轮 →</button>`;
+  } else {
+    navHtml += `<button class="btn ghost" onclick="nextQ()">下一题</button>`;
+  }
+  navHtml += `</div>`;
+  html+=navHtml;
   html+=`</div>`;
   wrap.appendChild(el(html));
   app.appendChild(wrap);
+  // 若已提交, 重建反馈(标色+解析), 支持回看
+  if(fbState){ showFeedback(q, state.answers[q.id]||[]); }
   renderBottom('quiz');
   window.scrollTo(0,0);
   recordPos(state.mode, q.chapter, state.idx);
@@ -1375,7 +1434,7 @@ function renderExamQuestion(){
   const total=state.items.length;
   // 顶部条
   const isMock = state.mode==='mock';
-  const modeLabel = isMock? '模拟真题·机考' : ('三轮复习·第 '+state.round+'/3 轮');
+  const modeLabel = isMock? '模拟真题·机考' : ('三轮学习·第 '+state.round+'/3 轮');
   const modeSub = isMock? '100题 · 90分钟' : ('共 '+total+' 题 · 按章节顺序 · 不计时');
   const timerBlock = isMock
     ? `<span class="meta"><span id="examTimerLabel">剩余</span><span style="opacity:.6;font-size:10px">点击交卷</span></span>
@@ -1532,7 +1591,7 @@ function toggleAll(){
   renderExamQuestion();
 }
 function tryFinish(){
-  if(state.mode==='mock' || state.mode==='round'){ confirmFinish(); }
+  if(state.mode==='mock'){ confirmFinish(); }
 }
 function confirmFinish(){
   const total=state.items.length, done=state.items.filter(q=>(state.answers[q.id]||[]).length>0).length;
@@ -1546,7 +1605,9 @@ function confirmFinish(){
 
 function toggleOpt(i){
   const q=state.items[state.idx];
-  if(state.mode==='mock' || state.mode==='round'){
+  // 已提交则锁定选项(学习/练习模式: 提交后不能再改, 可回看解析)
+  if(state.submitted && state.submitted[q.id]){ return; }
+  if(state.mode==='mock'){
     let a=state.answers[q.id]||[];
     if(q.type==='multiple'){ if(a.includes(i))a=a.filter(x=>x!==i); else a.push(i); }
     else { a=[i]; }
@@ -1570,8 +1631,6 @@ function toggleOpt(i){
     if(bar) bar.style.width=Math.round(doneN/state.items.length*100)+'%';
     return;
   }
-  const fb=document.getElementById('fb');
-  if(fb && fb.innerHTML) return; // 已提交, 锁定
   let a=state.answers[q.id]||[];
   if(q.type==='multiple'){ if(a.includes(i))a=a.filter(x=>x!==i); else a.push(i); }
   else { a=[i]; }
@@ -1579,27 +1638,42 @@ function toggleOpt(i){
   renderQuestion(); // 重绘以更新选中态
 }
 
-function submitAnswer(){
-  const q=state.items[state.idx];
-  const a=state.answers[q.id]||[];
-  const fb=document.getElementById('fb');
-  if(!a.length){alert('请先选择答案');return;}
+function showFeedback(q, a){
   const correct = isCorrect(q, a);
-  // 记录
-  addUnique(STORE.done, q.id);
-  if(correct){ addUnique(STORE.correct, q.id); removeUnique(STORE.wrong, q.id); }
-  else { addUnique(STORE.wrong, q.id); }
-  // 渲染反馈(三层解析: ①选项解析 ②出题思路 ③知识点回顾与讲解)
-  if(fb) fb.innerHTML=analysisHtml(q, a, correct);
-  // 标记选项
+  // 标记选项对/错
   const opts=document.querySelectorAll('.opt');
   opts.forEach(o=>{
     const i=+o.dataset.i;
     if(q.answer.includes(i)) o.classList.add('correct');
     else if(a.includes(i)) o.classList.add('wrong');
   });
-  const sb=document.getElementById('submitBtn'); if(sb)sb.disabled=true;
-  if(fb) window.scrollTo(0, fb.offsetTop-20);
+  // 渲染三层解析 + 对应知识点
+  const fb=document.getElementById('fb');
+  if(fb) fb.innerHTML=analysisHtml(q, a, correct);
+  return correct;
+}
+
+function submitAnswer(){
+  const q=state.items[state.idx];
+  const a=state.answers[q.id]||[];
+  if(state.submitted && state.submitted[q.id]){ return; } // 已提交锁定
+  if(!a.length){alert('请先选择答案');return;}
+  const correct = showFeedback(q, a);
+  state.submitted = state.submitted||{}; state.submitted[q.id]=1;
+  // 记录到本机学习数据(错题本/正确率/章节进度)
+  addUnique(STORE.done, q.id);
+  if(correct){ addUnique(STORE.correct, q.id); removeUnique(STORE.wrong, q.id); }
+  else { addUnique(STORE.wrong, q.id); }
+  // 学习模式(三轮学习): 累计本轮已学/正确, 实时更新顶部进度
+  if(state.mode==='round'){
+    state.roundDone=(state.roundDone||0)+1;
+    if(correct) state.roundCorrect=(state.roundCorrect||0)+1;
+    const dn=document.getElementById('learnDoneN'); if(dn) dn.textContent=state.roundDone;
+    const acc=document.getElementById('learnAcc'); if(acc) acc.textContent=(state.roundDone? Math.round(state.roundCorrect/state.roundDone*100):0)+'%';
+  }
+  const sb=document.getElementById('submitBtn');
+  if(sb){ sb.disabled=true; sb.textContent='已提交 ✓ 可回看'; }
+  const fb=document.getElementById('fb'); if(fb) window.scrollTo(0, fb.offsetTop-20);
 }
 
 function isCorrect(q,a){
@@ -1616,8 +1690,53 @@ function prevQ(){
 function nextQ(){
   if(state.idx < state.items.length-1){ state.idx++; renderQuestion(); return; }
   // 最后一题
-  if(state.mode==='mock' || state.mode==='round'){ tryFinish(); }
+  if(state.mode==='mock'){ tryFinish(); }
+  else if(state.mode==='round'){ finishRound(); }
   else { alert('已经是最后一题啦'); }
+}
+
+/* ---------- 三轮学习: 完成本轮 ---------- */
+function finishRound(){
+  // 以"已提交"的题统计本轮学习情况
+  let done=0, correct=0;
+  state.items.forEach(q=>{
+    if(state.submitted && state.submitted[q.id]){
+      done++;
+      if(isCorrect(q, state.answers[q.id]||[])) correct++;
+    }
+  });
+  const acc = done? Math.round(correct/done*100):0;
+  // 一题都没提交就点"完成本轮": 不记为完成, 留在当前题
+  if(done===0){ if(typeof alert!=='undefined') alert('本轮还没有提交任何题目，先去做几题吧～'); return; }
+  setRoundResult(state.round, done, correct, acc);
+  // 清掉可能存在的机考遗留
+  const eb=document.querySelector('.exam-bar'); if(eb) eb.remove();
+  const ov=document.getElementById('paletteOverlay'); if(ov) ov.remove();
+  const app=document.getElementById('app');app.innerHTML='';
+  app.appendChild(topbar('🎯 三轮学习 · 第 '+state.round+'/3 轮 完成', null, ()=>renderRoundPicker()));
+  const wrap=el('<div class="wrap"></div>');
+  let html=`<div class="card center" style="margin-top:14px">
+     <div style="font-size:46px">🎉</div>
+     <div style="font-weight:800;font-size:18px;margin-top:6px">第 ${state.round} 轮学习完成！</div>
+     <div class="muted" style="margin-top:6px">本轮共学习 <b>${done}</b> 题 · 正确率 <b style="color:var(--green)">${acc}%</b></div>
+     <div class="muted" style="margin-top:4px">答错的题已自动加入「错题本」，可在首页「错题练习」专攻</div>`;
+  if(state.round<3){
+    html += `<button class="btn" style="margin-top:16px" onclick="startMode('round',${state.round+1})">进入第 ${state.round+1} 轮 →</button>`;
+    html += `<button class="btn ghost" style="margin-top:10px" onclick="renderHome()">返回首页</button>`;
+  } else {
+    html += `<button class="btn" style="margin-top:16px;background:var(--green)" onclick="startMode('mock')">📝 三轮学完，去模拟考试！</button>`;
+    html += `<button class="btn ghost" style="margin-top:10px" onclick="renderRoundPicker()">查看学习进度</button>`;
+  }
+  html += `</div>`;
+  const rr=getRoundResults();
+  html += `<div class="card" style="margin-top:12px">
+     <div style="font-weight:700;margin-bottom:8px">📊 三轮学习情况</div>
+     ${[1,2,3].map(r=>{ const it=rr['r'+r]; if(!it) return `<div class="result-row"><span>第 ${r} 轮</span><span class="muted">未开始</span></div>`; return `<div class="result-row"><span>第 ${r} 轮</span><span style="color:var(--green)">已学 ${it.done} 题 · 正确率 ${it.acc}%</span></div>`; }).join('')}
+  </div>`;
+  wrap.appendChild(el(html));
+  app.appendChild(wrap);
+  state.finished=false; state.mode='home'; state.round=null; state.submitted={}; document.body.style.overflow='';
+  renderBottom('home');
 }
 
 /* ---------- 机考交卷(mock / round) ---------- */
@@ -1639,15 +1758,15 @@ function finishExam(){
   });
   // round 模式: 满分按题数*2(单选1, 多/案 2封顶); round 通过线 = 该轮总分 ≥ 80%
   const isMock = state.mode==='mock';
-  // round 满分: 单题1分, 多选/案例子题封顶2分(按题型求和, 不写死题数×2)
-  const roundMax = state.items.reduce((s,q)=> s + (q.type==='single'?1:2), 0);
-  const totalScore = isMock ? DATA.meta.totalScore : roundMax;
-  const passLine = isMock ? DATA.meta.passScore : Math.round(totalScore*0.8);
+  // 满分按"该套题实际可达分"求和(单题封顶: 单选1 / 多选·案例2, 部分得分计入), 避免写死140导致与可答满分不符
+  const roundMax = state.items.reduce((s,q)=> s + scoreOf(q, q.answer), 0);
+  const totalScore = roundMax;
+  const passLine = DATA.meta.passScore; // 官方84分及格线(三轮学习模式走 finishRound, 不走这里)
   const pass = score>=passLine;
   if(!isMock && state.round){ setRoundResult(state.round, score, pass); }
   const app=document.getElementById('app');app.innerHTML='';
   const headerBg = pass?'linear-gradient(135deg,#2f9e44,#51cf66)':'linear-gradient(135deg,#e03131,#fa5252)';
-  const title = isMock ? '模拟考试结果' : ('三轮复习 · 第'+state.round+'/3 轮 成绩');
+  const title = isMock ? '模拟考试结果' : ('三轮学习 · 第'+state.round+'/3 轮 成绩');
   let nextOnclick, nextText;
   if(isMock){
     nextOnclick = "startMode('mock')"; nextText = '再模拟一次';
@@ -1724,8 +1843,14 @@ function openRound(){
 function analysisHtml(q, a, correct){
   const ansTxt = q.answer.map(i=>String.fromCharCode(65+i)).join('、');
   const mind = DATA.mind[q.chapter] || {};
+  const chName=(DATA.chapters.find(c=>c.id===q.chapter)||{}).name||'';
   let html=`<div class="analysis">
      <div class="h">${correct?'✅ <span class="ok">回答正确</span>':'❌ <span class="no">回答错误</span>'}　正确答案：${ansTxt}</div>`;
+  // 💡 本题对应知识点(学习模式核心: 每题给出明确考点)
+  const kp = (q.kp||'').trim();
+  if(kp){
+    html += `<div class="kp-callout">💡 <b>本题对应知识点：</b>${esc(kp)}<div class="kp-where">所属章节：第${q.chapter}章 · ${esc(chName)}</div></div>`;
+  }
   html += `<div class="layer"><div class="layer-h">① 选项解析（逐项讲透）</div>`;
   if(q.analysis){ html += `<p>${esc(q.analysis)}</p>`; }
   (q.oa||[]).forEach((t,i)=>{
@@ -1733,8 +1858,8 @@ function analysisHtml(q, a, correct){
     html += `<div class="opt-note ${mk}"><b>${String.fromCharCode(65+i)}.</b> ${esc(t)}</div>`;
   });
   html += `</div>`;
-  html += `<div class="layer"><div class="layer-h">② 出题思路</div><p>${esc(q.logic||'')}</p></div>`;
-  html += `<div class="layer"><div class="layer-h">③ 知识点回顾与讲解（第${q.chapter}章）</div>`;
+  html += `<div class="layer"><div class="layer-h">② 本题考点 · 出题思路</div><p>${esc(q.logic||'')}</p></div>`;
+  html += `<div class="layer"><div class="layer-h">③ 本章知识点回顾与讲解（第${q.chapter}章）</div>`;
   if(mind.review){ html += `<p><b>知识回顾：</b>${esc(mind.review)}</p>`; }
   if(mind.detail){ html += `<p><b>详细讲解：</b>${esc(mind.detail)}</p>`; }
   if(mind.map){ html += `<details class="mm-box"><summary>展开本章思维导图</summary>${renderMind(mind.map,0)}</details>`; }
@@ -1767,8 +1892,8 @@ function backToMenu(){
   if(state.timer){clearInterval(state.timer); state.timer=null;}
   const eb=document.querySelector('.exam-bar'); if(eb) eb.remove();
   const ov=document.getElementById('paletteOverlay'); if(ov) ov.remove();
-  if(state.mode==='mock' || state.mode==='round'){
-    if(typeof confirm==='function' && !confirm('退出本次考试？当前进度将不计入成绩。')) return;
+  if(state.mode==='mock'){
+    if(typeof confirm==='function' && !confirm('退出本次模拟考试？当前进度将不计入成绩。')) return;
   }
   renderHome();
 }
@@ -1777,6 +1902,7 @@ function backToMenu(){
 function renderBottom(active){
   let bar=document.querySelector('.bottom');
   if(!bar){ bar=el('<div class="bottom"></div>'); document.body.appendChild(bar); }
+  bar.style.display=''; // 恢复(机考模式曾隐藏)
   const items=[
     {k:'home', ic:'🏠', t:'首页', fn:'renderHome()'},
     {k:'chapter', ic:'📚', t:'章节', fn:'renderChapters()'},

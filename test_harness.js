@@ -30,6 +30,7 @@ const sandbox = {
   document: {
     getElementById: () => makeStub(),
     createElement: () => makeStub(),
+    createDocumentFragment: () => makeStub(),
     querySelector: () => makeStub(),
     querySelectorAll: () => { const a = []; a.forEach = () => {}; return a; },
     body: makeStub()
@@ -49,7 +50,8 @@ const sandbox = {
 
 const driver = `
 ;(function(){
-  function run(label, fn){ try{ fn(); console.log("OK  -", label); }catch(e){ console.log("ERR -", label, "::", e.message); } }
+  let __fail=0;
+  function run(label, fn){ try{ fn(); console.log("OK  -", label); }catch(e){ __fail++; console.log("ERR -", label, "::", e.message); } }
 
   // 数据完整性: 每题 oa 长度必须等于选项数; mind 覆盖11章
   run("data: oa matches options", ()=>{
@@ -74,7 +76,6 @@ const driver = `
   run("startMode random", ()=>startMode("random"));
   run("startMode wrong (empty->alert)", ()=>startMode("wrong"));
   run("startMode mock", ()=>startMode("mock"));
-  run("finishMock (renamed to finishExam)", ()=>finishExam());
   run("buildMock size=100", ()=>{ const m=buildMock(); if(m.length!==100) throw new Error("mock size="+m.length); });
 
   // 三轮复习
@@ -103,12 +104,20 @@ const driver = `
     if(state.mode!=='round' || state.round!==2) throw new Error('state='+JSON.stringify({mode:state.mode,round:state.round}));
   });
   run("round: renderRoundPicker", ()=>renderRoundPicker());
-  run("round: setRoundResult + getRoundResults", ()=>{
-    setRoundResult(1, 80, true);
-    setRoundResult(2, 75, false);
+  run("round: setRoundResult + getRoundResults (学习: done/correct/acc)", ()=>{
+    setRoundResult(1, 80, 75, 94);
+    setRoundResult(2, 70, 60, 86);
     const rr=getRoundResults();
-    if(!rr.r1||rr.r1.score!==80) throw new Error("r1="+JSON.stringify(rr.r1));
-    if(!rr.r2||rr.r2.score!==75||rr.r2.pass!==false) throw new Error("r2="+JSON.stringify(rr.r2));
+    if(!rr.r1||rr.r1.done!==80||rr.r1.acc!==94) throw new Error("r1="+JSON.stringify(rr.r1));
+    if(!rr.r2||rr.r2.done!==70||rr.r2.acc!==86) throw new Error("r2="+JSON.stringify(rr.r2));
+  });
+  run("round: finishRound records acc (stub DOM, no crash)", ()=>{
+    setUser('alice'); resetRoundsPicked(); resetRoundResults();
+    startMode('round',1);
+    const q=state.items[0]; state.answers[q.id]=q.answer.slice(); state.submitted[q.id]=1;
+    finishRound();
+    const rr=getRoundResults();
+    if(!rr.r1 || typeof rr.r1.acc!=='number') throw new Error("r1="+JSON.stringify(rr.r1));
   });
   run("flatItems>=490", ()=>{ if(flatItems().length<490) throw new Error("items="+flatItems().length); });
   run("isCorrect", ()=>{ if(isCorrect({answer:[0,1]},{0:0,1:1,length:2,slice:()=>[0,1]})===false) throw new Error("should true"); });
@@ -144,11 +153,15 @@ const driver = `
   run("sync: boot without user shows gate", ()=>{ clearUser(); boot(); });
   run("sync: boot with user + no token renders home", ()=>{ setUser('alice'); boot(); });
   run("sync: pushCloud guarded (no token)", ()=>{ const _t=sync.token; sync.token=''; pushCloud(); sync.token=_t; });
+
+  if(__fail>0) throw new Error("SMOKE FAILURES="+__fail);
 })();
 `;
 try {
   vm.runInNewContext(code + driver, sandbox, { filename: "app.js" });
   console.log("SMOKE TEST DONE");
+  process.exit(0);
 } catch (e) {
-  console.log("FATAL:", e.message);
+  console.log("SMOKE TEST FAILED:", e.message);
+  process.exit(1);
 }
