@@ -64,6 +64,7 @@ header .meta{margin-top:6px;font-size:12.5px;opacity:.92}
 .nav{display:flex;gap:10px;margin-top:12px}
 .nav .btn{margin-top:0}
 .analysis{background:#f8f9fc;border-radius:12px;padding:14px;margin-top:14px;border:1px solid var(--line)}
+.wrong-detail{margin-top:10px}
 .analysis .h{font-weight:700;color:var(--primary);font-size:13.5px;margin-bottom:6px}
 .analysis .ok{color:var(--green);font-weight:700}
 .analysis .no{color:var(--red);font-weight:700}
@@ -13039,6 +13040,8 @@ const state = {mode:'home', items:[], idx:0, answers:{}, start:0, timer:null, to
 
 function $(h){return h;}
 function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
+/* 返回包含所有顶层节点的文档碎片(el 只返回首个节点, 多顶层结构会丢内容) */
+function elf(html){const d=document.createElement('div');d.innerHTML=html.trim();const f=document.createDocumentFragment();while(d.firstChild)f.appendChild(d.firstChild);return f;}
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
 /* ---------- 首页 ---------- */
@@ -13132,10 +13135,10 @@ function renderRoundPicker(){
   wrap.appendChild(el(`<div class="round-info" style="margin-top:14px">
     <h4>📘 三轮复习规则</h4>
     <ul>
-      <li>每轮从 11 个考点中, <b>每个考点随机抽 2 道题</b>(共 ${DATA.chapters.length*2} 题左右)</li>
-      <li>共进行 <b>3 轮</b>, 每轮抽到的题 <b>不会重复</b>(题库不够时才允许重复)</li>
-      <li>满分按 ${DATA.chapters.length*2}×2 计算, 通过线 = <b>80%</b>(单选1分, 多/案 ≤2分)</li>
-      <li>交卷后即时评分 + 错题解析, 可点击 "下一轮" 直接续刷</li>
+      <li>每轮从 <b>全库 ${ALL.length} 题</b> 随机抽 <b>约 160 题</b>, 覆盖工商管理所有章节与细节考点</li>
+      <li>共 <b>3 轮</b>(首轮→巩固→冲刺), 三轮抽到的题 <b>互不重复</b>, 三轮下来把整本题库刷透</li>
+      <li>满分按题型求和(单选1分 / 多选·案例封顶2分), 通过线 = <b>80%</b></li>
+      <li>交卷后即时评分 + 错题点开看 <b>三层解析</b>(选项逐项 / 出题思路 / 本章思维导图)</li>
       <li>3 轮全部通过 = 🎉 模拟通关</li>
     </ul>
   </div>${hist}`));
@@ -13211,27 +13214,23 @@ function buildMock(){
   return items;
 }
 
-/* 三轮复习: 每轮每考点抽2题, 三轮不重复 */
+/* 三轮复习: 每轮约160题, 三轮跨轮去重、累计覆盖全库(所有细节题) */
 function buildRound(roundNum){
   roundNum = +roundNum || 1;
-  const picked = (roundNum===1) ? new Set() : new Set(getRoundsPicked());
-  const byCh = {};
-  ALL.forEach(x=>{
-    if(!byCh[x.chapter]) byCh[x.chapter]=[];
-    byCh[x.chapter].push(x);
-  });
-  const items=[];
-  DATA.chapters.forEach(ch=>{
-    const pool = (byCh[ch.id]||[]).filter(x=>!picked.has(x.id));
-    // 优先用未抽过的；若该章所有题都已抽过则允许重复(保底)
-    let poolForThis = pool.length ? pool : (byCh[ch.id]||[]).slice();
-    for(let i=poolForThis.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[poolForThis[i],poolForThis[j]]=[poolForThis[j],poolForThis[i]];}
-    const take = Math.min(2, poolForThis.length);
-    for(let i=0;i<take;i++){ items.push(poolForThis[i]); picked.add(poolForThis[i].id); }
-  });
-  // 记录抽过的题(给下一轮用)
+  let picked = new Set(getRoundsPicked());
+  let pool = ALL.filter(x=>!picked.has(x.id));
+  if(pool.length===0){ // 三轮已全部抽完 → 重置从头再练
+    resetRoundsPicked(); picked = new Set();
+    pool = ALL.slice();
+  }
+  // 打乱剩余题库
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const TARGET = 160;
+  // 第3轮(收尾轮)抽完剩余全部, 保证三轮累计覆盖整本题库每一个细节题
+  const take = (roundNum>=3) ? pool.length : Math.min(TARGET, pool.length);
+  const items = pool.slice(0, take);
   items.forEach(x=>addRoundsPicked(x.id));
-  // 打乱顺序(不按章排)
+  // 最终顺序再打乱(不按原顺序)
   for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}
   return items;
 }
@@ -13320,7 +13319,7 @@ function renderExamQuestion(){
   // 顶部条
   const isMock = state.mode==='mock';
   const modeLabel = isMock? '模拟真题·机考' : ('三轮复习·第 '+state.round+'/3 轮');
-  const modeSub = isMock? '100题 · 90分钟' : ('共 '+total+' 题 · 每考点 2 题');
+  const modeSub = isMock? '100题 · 90分钟' : ('共 '+total+' 题 · 三轮覆盖全库');
   app.appendChild(el(`<div class="exam-topbar">
      <div class="ttl">${esc(modeLabel)}<span class="sub">${esc(modeSub)}</span></div>
      <div class="timer-wrap">
@@ -13374,7 +13373,10 @@ function renderExamQuestion(){
        <div class="mk">${mk}</div><div class="txt">${esc(o)}</div></div>`));
   });
   app.appendChild(body);
-  // 底部操作条
+  // 机考期间隐藏底部全局导航(避免与固定底栏重叠)
+  const botNav=document.querySelector('.bottom'); if(botNav) botNav.style.display='none';
+  // 底部操作条(先移除旧底栏, 避免翻题/标记后堆叠)
+  const oldBar=document.querySelector('.exam-bar'); if(oldBar) oldBar.remove();
   const marked = !!state.marked[q.id];
   const isLast = state.idx===state.items.length-1;
   const bar = el(`<div class="exam-bar">
@@ -13435,18 +13437,19 @@ function renderPalette(){
     b.classList.toggle('act', b.dataset.t===_paletteTab);
   });
   grid.innerHTML='';
-  // 收集题目在 items 中按 idx 排序, 过滤类型
+  // 收集题目在 items 中按 idx 排序, 过滤类型(案例子题用 caseBg 标识, 单选/多选都可能)
   const filtered = state.items.map((q,i)=>({q,i})).filter(o=>{
-    if(_paletteTab==='single') return o.q.type==='single';
-    if(_paletteTab==='multiple') return o.q.type==='multiple';
-    return o.q.type==='single' && o.q.caseBg; // 案例子题在 ALL 中 type 跟 single/multiple, caseBg 标识
+    if(_paletteTab==='single') return o.q.type==='single' && !o.q.caseBg;
+    if(_paletteTab==='multiple') return o.q.type==='multiple' && !o.q.caseBg;
+    return !!o.q.caseBg; // 案例分析
   });
   if(!filtered.length){ grid.innerHTML='<div class="muted" style="grid-column:1/-1;text-align:center">该题型暂无题</div>'; return; }
+  let caseSeq=0;
   filtered.forEach(({q,i})=>{
     const ans = state.answers[q.id]||[];
     const mk = state.marked[q.id];
-    const cls = (i===state.idx)?'cur':(ans.length?'done':(mk?'mark':''));
-    const label = (q.type==='single' && q.caseBg)? '案'+(filtered.indexOf({q,i})+1) : (i+1);
+    const cls = (i===state.idx)?'cur':(mk?'mark':(ans.length?'done':''));
+    const label = q.caseBg ? ('案'+(++caseSeq)) : (i+1);
     grid.appendChild(el(`<div class="pcell ${cls}" onclick="gotoQuestion(${i})">${label}</div>`));
   });
 }
@@ -13528,27 +13531,7 @@ function submitAnswer(){
   if(correct){ addUnique(STORE.correct, q.id); removeUnique(STORE.wrong, q.id); }
   else { addUnique(STORE.wrong, q.id); }
   // 渲染反馈(三层解析: ①选项解析 ②出题思路 ③知识点回顾与讲解)
-  const ansTxt = q.answer.map(i=>String.fromCharCode(65+i)).join('、');
-  const mind = DATA.mind[q.chapter] || {};
-  let html=`<div class="analysis">
-     <div class="h">${correct?'✅ <span class="ok">回答正确</span>':'❌ <span class="no">回答错误</span>'}　正确答案：${ansTxt}</div>`;
-  // ① 选项解析
-  html += `<div class="layer"><div class="layer-h">① 选项解析（逐项讲透）</div>`;
-  if(q.analysis){ html += `<p>${esc(q.analysis)}</p>`; }
-  (q.oa||[]).forEach((t,i)=>{
-    const mk = q.answer.includes(i) ? 'ok' : 'no';
-    html += `<div class="opt-note ${mk}"><b>${String.fromCharCode(65+i)}.</b> ${esc(t)}</div>`;
-  });
-  html += `</div>`;
-  // ② 出题思路
-  html += `<div class="layer"><div class="layer-h">② 出题思路</div><p>${esc(q.logic||'')}</p></div>`;
-  // ③ 知识点回顾与讲解
-  html += `<div class="layer"><div class="layer-h">③ 知识点回顾与讲解（第${q.chapter}章）</div>`;
-  if(mind.review){ html += `<p><b>知识回顾：</b>${esc(mind.review)}</p>`; }
-  if(mind.detail){ html += `<p><b>详细讲解：</b>${esc(mind.detail)}</p>`; }
-  if(mind.map){ html += `<details class="mm-box"><summary>展开本章思维导图</summary>${renderMind(mind.map,0)}</details>`; }
-  html += `</div></div>`;
-  if(fb) fb.innerHTML=html;
+  if(fb) fb.innerHTML=analysisHtml(q, a, correct);
   // 标记选项
   const opts=document.querySelectorAll('.opt');
   opts.forEach(o=>{
@@ -13596,7 +13579,9 @@ function finishExam(){
   });
   // round 模式: 满分按题数*2(单选1, 多/案 2封顶); round 通过线 = 该轮总分 ≥ 80%
   const isMock = state.mode==='mock';
-  const totalScore = isMock ? DATA.meta.totalScore : (state.items.length*2);
+  // round 满分: 单题1分, 多选/案例子题封顶2分(按题型求和, 不写死题数×2)
+  const roundMax = state.items.reduce((s,q)=> s + (q.type==='single'?1:2), 0);
+  const totalScore = isMock ? DATA.meta.totalScore : roundMax;
   const passLine = isMock ? DATA.meta.passScore : Math.round(totalScore*0.8);
   const pass = score>=passLine;
   if(!isMock && state.round){ setRoundResult(state.round, score, pass); }
@@ -13647,15 +13632,19 @@ function finishExam(){
      </div>`;
   }
   html += `<div class="card"><div style="font-weight:700;margin-bottom:6px">📝 错题回顾（点击看解析）</div><div id="wl"></div></div></div>`;
-  app.appendChild(el(html));
+  app.appendChild(elf(html));
+  // 恢复底部导航(机考时曾隐藏)
+  const bot=document.querySelector('.bottom'); if(bot) bot.style.display='';
   const wl=document.getElementById('wl');
   if(!wrongList.length){ wl.innerHTML='<div class="muted">全部正确，太强了！</div>'; }
   else{
     wrongList.forEach(id=>{
-      const q=state.items.find(x=>x.id===id);
-      wl.appendChild(el(`<div class="list-item" onclick="reviewWrong('${id}')">
-        <div class="q">${esc((q.caseBg?'［案例］':'')+q.stem)}</div>
-        <div class="muted">正确答案：${q.answer.map(i=>String.fromCharCode(65+i)).join('、')}</div></div>`));
+      const q=state.items.find(x=>x.id===id)||ALL.find(x=>x.id===id);
+      if(!q) return;
+      wl.appendChild(el(`<div class="list-item">
+        <div class="q" onclick="toggleWrong('${id}')" style="cursor:pointer">${esc((q.caseBg?'［案例］':'')+q.stem)}</div>
+        <div class="muted" style="cursor:pointer" onclick="toggleWrong('${id}')">正确答案：${q.answer.map(i=>String.fromCharCode(65+i)).join('、')}　<span class="link">点开看讲解 ▾</span></div>
+        <div class="wrong-detail" id="wd_${id}" style="display:none"></div></div>`));
     });
   }
   // 清理考试模式
@@ -13671,21 +13660,38 @@ function openRound(){
   renderRoundPicker();
 }
 
-function reviewWrong(id){
-  const q=state.items.find(x=>x.id===id)||ALL.find(x=>x.id===id);
-  if(!q)return;
+/* 三层解析 HTML(选项逐项 / 出题思路 / 本章思维导图), 供 submitAnswer 与结果页复用 */
+function analysisHtml(q, a, correct){
   const ansTxt = q.answer.map(i=>String.fromCharCode(65+i)).join('、');
   const mind = DATA.mind[q.chapter] || {};
-  const oa = (q.oa||[]).map((t,i)=>{
-    const mk = q.answer.includes(i) ? '【正】' : '【误】';
-    return mk + String.fromCharCode(65+i) + '. ' + t;
-  }).join('\n');
-  alert(
-    '【正确答案】'+ansTxt+'\n\n' +
-    '【选项解析】\n'+oa+'\n\n' +
-    '【整体解析】'+q.analysis+'\n\n' +
-    '【出题思路】'+(q.logic||'—')
-  );
+  let html=`<div class="analysis">
+     <div class="h">${correct?'✅ <span class="ok">回答正确</span>':'❌ <span class="no">回答错误</span>'}　正确答案：${ansTxt}</div>`;
+  html += `<div class="layer"><div class="layer-h">① 选项解析（逐项讲透）</div>`;
+  if(q.analysis){ html += `<p>${esc(q.analysis)}</p>`; }
+  (q.oa||[]).forEach((t,i)=>{
+    const mk = q.answer.includes(i) ? 'ok' : 'no';
+    html += `<div class="opt-note ${mk}"><b>${String.fromCharCode(65+i)}.</b> ${esc(t)}</div>`;
+  });
+  html += `</div>`;
+  html += `<div class="layer"><div class="layer-h">② 出题思路</div><p>${esc(q.logic||'')}</p></div>`;
+  html += `<div class="layer"><div class="layer-h">③ 知识点回顾与讲解（第${q.chapter}章）</div>`;
+  if(mind.review){ html += `<p><b>知识回顾：</b>${esc(mind.review)}</p>`; }
+  if(mind.detail){ html += `<p><b>详细讲解：</b>${esc(mind.detail)}</p>`; }
+  if(mind.map){ html += `<details class="mm-box"><summary>展开本章思维导图</summary>${renderMind(mind.map,0)}</details>`; }
+  html += `</div></div>`;
+  return html;
+}
+/* 结果页错题: 点开内联展开三层解析 */
+function toggleWrong(id){
+  const box=document.getElementById('wd_'+id); if(!box) return;
+  const q=state.items.find(x=>x.id===id)||ALL.find(x=>x.id===id);
+  if(!q) return;
+  const a=state.answers[q.id]||[];
+  const correct=isCorrect(q,a);
+  if(box.style.display==='none' || !box.innerHTML){
+    box.innerHTML=analysisHtml(q, a, correct);
+    box.style.display='block';
+  } else { box.style.display='none'; }
 }
 
 function scoreOf(q,a){
@@ -13693,7 +13699,8 @@ function scoreOf(q,a){
   // 多选/案例子题: 错选0; 少选每正确项0.5; 全对2
   const ans=new Set(q.answer); const sel=new Set(a);
   for(const x of sel) if(!ans.has(x)) return 0; // 错选
-  return Math.min(2, 0.5*sel.size);
+  if(sel.size===ans.size) return 2;            // 全对
+  return 0.5*sel.size;                          // 少选每项0.5
 }
 
 function backToMenu(){
