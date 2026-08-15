@@ -1,0 +1,13 @@
+# 构建/上传过程产生的临时产物(非源码, 不纳入版本管理)
+_c.js
+_script.js
+body.json
+nojekyll.json
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 系统文件
+.DS_Store
+Thumbs.db
