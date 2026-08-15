@@ -893,8 +893,9 @@ function setUser(u){ u=(u||'').toString().trim().slice(0,20); if(!u) return fals
 function listUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY)||'[]')||[]; }catch(e){ return []; } }
 function clearUser(){ localStorage.removeItem(USER_KEY); }
 function pkey(base){ const u=curUser()||'guest'; return 'ee_'+u+'_'+base; }
+function lsSet(k,v){ try{ localStorage.setItem(k, v); }catch(e){ /* 隐私模式/超额时静默失败, 不阻断答题 */ } }
 function load(k){try{return JSON.parse(localStorage.getItem(pkey(k)))||[]}catch(e){return[]}}
-function save(k,v){localStorage.setItem(pkey(k),JSON.stringify(v))}
+function save(k,v){ lsSet(pkey(k), JSON.stringify(v)); }
 function addUnique(k,id){let a=load(k);if(!a.includes(id)){a.push(id);save(k,a)}}
 function removeUnique(k,id){let a=load(k);a=a.filter(x=>x!==id);save(k,a)}
 
@@ -903,9 +904,9 @@ const LASTPOS_KEY='ee_lastpos';
 const SYNC_KEY='ee_sync';
 let sync = loadSync();
 function loadSync(){ try{ return Object.assign({on:false,token:'',repo:'',branch:'ee-sync'}, JSON.parse(localStorage.getItem(SYNC_KEY)||'{}')); }catch(e){ return {on:false,token:'',repo:'',branch:'ee-sync'}; } }
-function saveSync(){ localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); }
+function saveSync(){ lsSet(SYNC_KEY, JSON.stringify(sync)); }
 function getLastPos(){ try{ return JSON.parse(localStorage.getItem(pkey('lastpos'))||'null'); }catch(e){ return null; } }
-function setLastPos(p){ localStorage.setItem(pkey('lastpos'), JSON.stringify(p)); }
+function setLastPos(p){ lsSet(pkey('lastpos'), JSON.stringify(p)); }
 let _pushTimer=null;
 function recordPos(mode, ch, idx){
   setLastPos({mode:mode, chapter:ch, idx:idx, ts:Date.now()});
@@ -1073,13 +1074,13 @@ function flatItems(){
 const ALL = flatItems();
 const byChapter = ch => ALL.filter(x=>x.chapter===ch);
 
-const state = {mode:'home', items:[], idx:0, answers:{}, start:0, timer:null, total:0, dur:0};
+const state = {mode:'home', items:[], idx:0, answers:{}, start:0, timer:null, total:0, dur:0, finished:false, untimed:false};
 
 function $(h){return h;}
 function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
 /* 返回包含所有顶层节点的文档碎片(el 只返回首个节点, 多顶层结构会丢内容) */
 function elf(html){const d=document.createElement('div');d.innerHTML=html.trim();const f=document.createDocumentFragment();while(d.firstChild)f.appendChild(d.firstChild);return f;}
-function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function esc(s){return (s==null?'':s).toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 /* ---------- 首页 ---------- */
 function renderHome(){
@@ -1172,8 +1173,8 @@ function renderRoundPicker(){
   wrap.appendChild(el(`<div class="round-info" style="margin-top:14px">
     <h4>📘 三轮复习规则</h4>
     <ul>
-      <li>每轮从 <b>全库 ${ALL.length} 题</b> 随机抽 <b>约 160 题</b>, 覆盖工商管理所有章节与细节考点</li>
-      <li>共 <b>3 轮</b>(首轮→巩固→冲刺), 三轮抽到的题 <b>互不重复</b>, 三轮下来把整本题库刷透</li>
+      <li>每轮从 <b>全库 ${ALL.length} 题</b> 抽 <b>≥160 题</b>, <b>按章节顺序</b>从第1章学到最后一章, 覆盖工商管理所有细节考点</li>
+      <li><b>不计时</b> 自由作答；共 <b>3 轮</b>(首轮→巩固→冲刺), 三轮抽到的题 <b>互不重复</b>, 三轮下来把整本题库刷透</li>
       <li>满分按题型求和(单选1分 / 多选·案例封顶2分), 通过线 = <b>80%</b></li>
       <li>交卷后即时评分 + 错题点开看 <b>三层解析</b>(选项逐项 / 出题思路 / 本章思维导图)</li>
       <li>3 轮全部通过 = 🎉 模拟通关</li>
@@ -1226,10 +1227,14 @@ function startMode(mode, chId, idx){
   }
   if(!items.length){alert('暂无可练习的题目');return;}
   state.mode=mode; state.items=items; state.idx=(typeof idx==='number')?idx:0; state.answers={}; state.marked={};
-  if(mode==='mock' || mode==='round'){
+  state.finished=false; state.untimed=false;
+  if(mode==='mock'){
     state.start=Date.now();
-    state.dur = (mode==='mock') ? DATA.meta.timeMinutes*60 : Math.max(30*60, items.length*1.2*60);
+    state.dur = DATA.meta.timeMinutes*60;
     startTimer();
+  } else if(mode==='round'){
+    // 三轮复习不计时
+    state.start=null; state.dur=0; state.untimed=true; state.timer=null;
   } else { state.timer&&clearInterval(state.timer); state.timer=null; }
   renderQuestion();
   window.scrollTo(0,0);
@@ -1251,7 +1256,7 @@ function buildMock(){
   return items;
 }
 
-/* 三轮复习: 每轮约160题, 三轮跨轮去重、累计覆盖全库(所有细节题) */
+/* 三轮复习: 每轮按章节顺序, 每轮≥160题, 三轮跨轮去重、累计覆盖全库(所有细节题) */
 function buildRound(roundNum){
   roundNum = +roundNum || 1;
   let picked = new Set(getRoundsPicked());
@@ -1260,22 +1265,37 @@ function buildRound(roundNum){
     resetRoundsPicked(); picked = new Set();
     pool = ALL.slice();
   }
-  // 打乱剩余题库
-  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  // 按章节分组(各章内部保持题源顺序)
+  const byCh={};
+  pool.forEach(x=>{ (byCh[x.chapter]=byCh[x.chapter]||[]).push(x); });
+  const chs = Object.keys(byCh).map(Number).sort((a,b)=>a-b);
   const TARGET = 160;
-  // 第3轮(收尾轮)抽完剩余全部, 保证三轮累计覆盖整本题库每一个细节题
-  const take = (roundNum>=3) ? pool.length : Math.min(TARGET, pool.length);
-  const items = pool.slice(0, take);
-  items.forEach(x=>addRoundsPicked(x.id));
-  // 最终顺序再打乱(不按原顺序)
-  for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}
-  return items;
+  let chosen=[];
+  if(pool.length <= TARGET*1.5){
+    chosen = pool.slice(); // 收尾: 剩余不足1.5轮时抽完剩余, 保证三轮累计覆盖整本题库(顺序无关)
+  } else {
+    // 轮转从各章抽题, 保证每轮都覆盖 ch1..ch11
+    const ptr={}; chs.forEach(c=>ptr[c]=0);
+    let guard=0, ci=0;
+    while(chosen.length<TARGET && guard++ < pool.length*3){
+      const c=chs[ci%chs.length]; ci++;
+      const arr=byCh[c];
+      if(ptr[c] < arr.length){ chosen.push(arr[ptr[c]++]); }
+    }
+  }
+  // 跨轮去重写回(一次性写, 避免逐题写 localStorage)
+  const a=getRoundsPicked(); chosen.forEach(x=>{ if(!a.includes(x.id)) a.push(x.id); });
+  lsSet(pkey('roundsPicked'), JSON.stringify(a));
+  // 按章节升序排列(同章保持题源顺序): 实现"从第一章到最后一章学一遍"
+  const pos={}; ALL.forEach((x,i)=>{ if(!(x.id in pos)) pos[x.id]=i; });
+  chosen.sort((x,y)=> (x.chapter||0)-(y.chapter||0) || (pos[x.id]-pos[y.id]));
+  return chosen;
 }
 function getRoundsPicked(){ try{return JSON.parse(localStorage.getItem(pkey('roundsPicked'))||'[]')||[];}catch(e){return [];} }
-function addRoundsPicked(id){ const a=getRoundsPicked(); if(!a.includes(id)){a.push(id); localStorage.setItem(pkey('roundsPicked'), JSON.stringify(a));} }
+function addRoundsPicked(id){ const a=getRoundsPicked(); if(!a.includes(id)){a.push(id); lsSet(pkey('roundsPicked'), JSON.stringify(a));} }
 function resetRoundsPicked(){ localStorage.removeItem(pkey('roundsPicked')); }
 function getRoundResults(){ try{return JSON.parse(localStorage.getItem(pkey('roundResults'))||'{}')||{};}catch(e){return {};} }
-function setRoundResult(round, score, pass){ const r=getRoundResults(); r['r'+round]={score:score, pass:!!pass, ts:Date.now()}; localStorage.setItem(pkey('roundResults'), JSON.stringify(r)); }
+function setRoundResult(round, score, pass){ const r=getRoundResults(); r['r'+round]={score:score, pass:!!pass, ts:Date.now()}; lsSet(pkey('roundResults'), JSON.stringify(r)); }
 function resetRoundResults(){ localStorage.removeItem(pkey('roundResults')); }
 
 /* ---------- 计时器(机考样式) ---------- */
@@ -1356,12 +1376,15 @@ function renderExamQuestion(){
   // 顶部条
   const isMock = state.mode==='mock';
   const modeLabel = isMock? '模拟真题·机考' : ('三轮复习·第 '+state.round+'/3 轮');
-  const modeSub = isMock? '100题 · 90分钟' : ('共 '+total+' 题 · 三轮覆盖全库');
+  const modeSub = isMock? '100题 · 90分钟' : ('共 '+total+' 题 · 按章节顺序 · 不计时');
+  const timerBlock = isMock
+    ? `<span class="meta"><span id="examTimerLabel">剩余</span><span style="opacity:.6;font-size:10px">点击交卷</span></span>
+       <span class="timer-box" id="examTimerBox">00:00</span>`
+    : `<span class="meta" style="font-size:11px;opacity:.85">🕊 不计时 · 按章节顺序</span>`;
   app.appendChild(el(`<div class="exam-topbar">
      <div class="ttl">${esc(modeLabel)}<span class="sub">${esc(modeSub)}</span></div>
      <div class="timer-wrap">
-        <span class="meta"><span id="examTimerLabel">剩余</span><span style="opacity:.6;font-size:10px">点击交卷</span></span>
-        <span class="timer-box" id="examTimerBox">00:00</span>
+        ${timerBlock}
         <button class="submit-btn" onclick="tryFinish()">交卷</button>
      </div>
   </div>`));
@@ -1424,12 +1447,11 @@ function renderExamQuestion(){
         : `<button class="btn primary" onclick="nextQ()">下一题</button>`}
   </div>`);
   document.body.appendChild(bar);
-  // 答题卡 overlay
+  // 答题卡 overlay(只创建一次; 打开时再刷新)
   ensurePalette();
-  renderPalette();
-  // 启动计时器(若尚未启动)
-  if(!state.timer){ startTimer(); }
-  else { // 立刻刷新顶部计时
+  // 仅模拟考试计时; 三轮复习不计时
+  if(isMock && !state.timer){ startTimer(); }
+  else if(isMock && state.timer){
     const tb=document.getElementById('examTimerBox');
     const left=state.dur-Math.floor((Date.now()-state.start)/1000);
     if(tb){ const m=String(Math.floor(left/60)).padStart(2,'0'), s=String(left%60).padStart(2,'0'); tb.textContent=m+':'+s; }
@@ -1464,8 +1486,8 @@ function ensurePalette(){
   </div>`);
   document.body.appendChild(ov);
 }
-function openPalette(){ ensurePalette(); renderPalette(); document.getElementById('paletteOverlay').classList.add('show'); }
-function closePalette(){ const ov=document.getElementById('paletteOverlay'); if(ov) ov.classList.remove('show'); }
+function openPalette(){ ensurePalette(); renderPalette(); const ov=document.getElementById('paletteOverlay'); if(ov) ov.classList.add('show'); document.body.style.overflow='hidden'; }
+function closePalette(){ const ov=document.getElementById('paletteOverlay'); if(ov) ov.classList.remove('show'); document.body.style.overflow=''; }
 function switchPaletteTab(t){ _paletteTab=t; renderPalette(); }
 function renderPalette(){
   const grid=document.getElementById('paletteGrid'); if(!grid) return;
@@ -1600,6 +1622,7 @@ function nextQ(){
 
 /* ---------- 机考交卷(mock / round) ---------- */
 function finishExam(){
+  if(state.finished) return; state.finished=true;
   if(state.timer){clearInterval(state.timer); state.timer=null;}
   // 清掉 exam-bar / palette
   const eb=document.querySelector('.exam-bar'); if(eb) eb.remove();
@@ -1641,7 +1664,7 @@ function finishExam(){
      <div class="wrap"><div class="card center">
        <div class="big ${pass?'pass':'fail'}">${score}</div>
        <div class="${pass?'pass':'fail'}" style="font-weight:700">${pass?'🎉 恭喜，已达到及格线！':'未达及格线，继续加油'}</div>
-       <div class="muted" style="margin-top:6px">共 ${state.items.length} 题 · 错题 ${wrongList.length} 题 · 用时 ${usedMinutes()} 分</div>
+       <div class="muted" style="margin-top:6px">共 ${state.items.length} 题 · 错题 ${wrongList.length} 题${isMock?(' · 用时 '+usedMinutes()+' 分'):''}</div>
        <div style="display:flex;gap:10px;margin-top:14px">
          <button class="btn" onclick="${nextOnclick}">${nextText}</button>
          <button class="btn ghost" onclick="${backOnclick}">${backText}</button>
@@ -1685,7 +1708,7 @@ function finishExam(){
     });
   }
   // 清理考试模式
-  state.timer=null; state.mode='home'; state.round=null;
+  state.timer=null; state.mode='home'; state.round=null; state.finished=false; document.body.style.overflow='';
   renderBottom(isMock?'home':'home');
 }
 function usedMinutes(){
@@ -1818,6 +1841,17 @@ function resetData(){
     localStorage.removeItem(pkey('lastpos'));
     renderHome();
   }
+}
+
+/* 机考键盘导航: ←/→ 翻题, Esc 关闭答题卡 */
+if(typeof document!=='undefined' && document.addEventListener){
+  document.addEventListener('keydown', function(e){
+    if(state.mode!=='mock' && state.mode!=='round') return;
+    const ov=document.getElementById('paletteOverlay');
+    if(ov && ov.classList.contains('show')){ if(e.key==='Escape'){ closePalette(); e.preventDefault(); } return; }
+    if(e.key==='ArrowRight' && state.idx < state.items.length-1){ nextQ(); e.preventDefault(); }
+    else if(e.key==='ArrowLeft' && state.idx>0){ prevQ(); e.preventDefault(); }
+  });
 }
 
 /* ---------- 启动 ---------- */
