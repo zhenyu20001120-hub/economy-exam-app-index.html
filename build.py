@@ -1987,12 +1987,13 @@ boot();
 </html>
 """
 
-data_json = json.dumps({"meta": META, "chapters": CHAPTERS, "questions": Q, "mind": MIND},
-                        ensure_ascii=False, indent=1)
-html = HTML.replace("__DATA__", data_json)
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html)
-print("生成完成: index.html")
-_n = sum(len(q.get("subs", [])) if q["type"] == "case" else 1 for q in Q)
-print("题目数(含案例子题展开):", _n)
-print("章节数:", len(CHAPTERS))
+if __name__ == "__main__":
+    data_json = json.dumps({"meta": META, "chapters": CHAPTERS, "questions": Q, "mind": MIND},
+                            ensure_ascii=False, indent=1)
+    html = HTML.replace("__DATA__", data_json)
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html)
+    print("生成完成: index.html")
+    _n = sum(len(q.get("subs", [])) if q["type"] == "case" else 1 for q in Q)
+    print("题目数(含案例子题展开):", _n)
+    print("章节数:", len(CHAPTERS))
