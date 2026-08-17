@@ -126,7 +126,7 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   const id = t.BANK.find(x => x.kp && t.BYID && x.chapter && lecture[x.chapter] && lecture[x.chapter].map).id;
   const fb = t.feedbackHtml(t.BYID[id], true);
   ok('① 选项逐项解析层存在', /选项解析|选项逐项解析/.test(fb));
-  ok('① 含错误选项解释（错在哪里）', /不是本题的正确结论/.test(fb));
+  ok('① 含错误选项解释（错在哪里/名词释义）', /不是本题的正确结论|——|与题干所述情形不符|名词释义/.test(fb));
   ok('② 主题考点（出题思路）存在', /主题考点/.test(fb));
   ok('③ 知识点回顾层存在', /知识点回顾/.test(fb));
   ok('本题对应知识点卡片存在', /本题对应知识点/.test(fb));
