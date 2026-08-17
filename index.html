@@ -27,6 +27,21 @@
     <button data-nav="wrong"><span>📕</span>错题</button>
     <button data-nav="exam"><span>📝</span>模考</button>
   </nav>
+  <script>
+    // PWA：注册 Service Worker；当检测到“新版本已接管”时自动刷新一次，
+    // 避免「旧 app.js + 新 index.html」缓存不一致导致的异常（如用户名输入框丢失/点不动）。
+    // 仅对“已有旧 SW 的更新场景”刷新，首次安装不强制刷新。
+    if ('serviceWorker' in navigator) {
+      var _hadSW = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+      var _swRefreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (_swRefreshing || !_hadSW) return;
+        _swRefreshing = true;
+        window.location.reload();
+      });
+    }
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
