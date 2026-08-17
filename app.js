@@ -32,8 +32,32 @@ function setSyncOn(v) { try { localStorage.setItem(SYNC_ON_KEY, v ? '1' : '0'); 
 // 每个用户名一套独立存储桶，互不串
 function lsKey() { return 'zjjjs_gq_v1' + (curUser() ? '_' + curUser() : ''); }
 let store = loadStore();
+function isObj(o) { return !!o && typeof o === 'object' && !Array.isArray(o); }
+// 防御性修复：旧版本可能把 store.wrong / store.answered 存成数组或字符串，
+// 直接访问 .due / .correct 会抛错，导致点击“进入刷题”或启动首页时整页无响应。
+function sanitizeStore(raw) {
+  const s = isObj(raw) ? raw : {};
+  s.answered = isObj(s.answered) ? s.answered : {};
+  s.wrong = isObj(s.wrong) ? s.wrong : {};
+  s.stats = isObj(s.stats) ? s.stats : {};
+  s.roundQuestions = isObj(s.roundQuestions) ? s.roundQuestions : {};
+  s.roundResults = isObj(s.roundResults) ? s.roundResults : {};
+  s.exams = Array.isArray(s.exams) ? s.exams : [];
+  s.roundsPicked = Array.isArray(s.roundsPicked) ? s.roundsPicked : [];
+  for (const id of Object.keys(s.wrong)) {
+    const w = s.wrong[id];
+    if (!isObj(w) || !Number.isFinite(w.due)) { delete s.wrong[id]; continue; }
+    if (!Number.isFinite(w.box)) w.box = 0;
+    if (!Number.isFinite(w.wrongCount)) w.wrongCount = 0;
+  }
+  for (const id of Object.keys(s.answered)) {
+    if (!isObj(s.answered[id])) delete s.answered[id];
+  }
+  return s;
+}
 function loadStore() {
-  try { return JSON.parse(localStorage.getItem(lsKey())) || {}; } catch (e) { return {}; }
+  try { return sanitizeStore(JSON.parse(localStorage.getItem(lsKey()))); }
+  catch (e) { return sanitizeStore({}); }
 }
 let _pushTimer = null;
 function saveStore() {
@@ -144,12 +168,19 @@ function nav(name, params) {
   else location.hash = h;
 }
 function router() {
-  const raw = location.hash.slice(1) || 'home';
-  const [name, qs] = raw.split('?');
-  const params = Object.fromEntries(new URLSearchParams(qs || ''));
-  (routes[name] || routes.home)(params);
-  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
-  window.scrollTo(0, 0);
+  try {
+    const raw = location.hash.slice(1) || 'home';
+    const [name, qs] = raw.split('?');
+    const params = Object.fromEntries(new URLSearchParams(qs || ''));
+    (routes[name] || routes.home)(params);
+    document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
+  } catch (e) {
+    console.error(e);
+    app().innerHTML = '<div class="empty">⚠️ 页面出错了：<br><span class="sub">' + esc(e && e.message ? e.message : String(e)) +
+      '</span><br><span class="sub">可在右上角“设置”里点“清除本机进度”后刷新，或在浏览器开发者工具清除本站数据。</span></div>';
+  } finally {
+    try { window.scrollTo(0, 0); } catch (e) {}
+  }
 }
 window.addEventListener('hashchange', router);
 
@@ -591,7 +622,7 @@ function updateSR(id, correct) {
 }
 function dueWrongIds() {
   S();
-  return Object.keys(store.wrong).filter(id => BYID[id] && store.wrong[id].due <= now());
+  return Object.keys(store.wrong).filter(id => BYID[id] && isObj(store.wrong[id]) && typeof store.wrong[id].due === 'number' && store.wrong[id].due <= now());
 }
 let reviewState = null;
 routes.wrong = (params) => {
@@ -915,9 +946,14 @@ function renderUserGate() {
     </div>`;
   const inp = $('#userName');
   const go = () => {
-    const n = (inp.value || '').trim().replace(/[<>'"]/g, '');
-    if (!n) { inp.focus(); return; }
-    enterUser(n);
+    try {
+      const n = (inp.value || '').trim().replace(/[<>'"]/g, '');
+      if (!n) { inp.focus(); return; }
+      enterUser(n);
+    } catch (e) {
+      console.error(e);
+      alert('进入刷题失败：' + (e && e.message ? e.message : String(e)) + '\n可尝试刷新页面，或在开发者工具清除本站数据后重试。');
+    }
   };
   $('#enterBtn').onclick = go;
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
