@@ -53,6 +53,7 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   const html = read('index.html');
   const dom = new JSDOM(html, { url: 'http://localhost/', pretendToBeVisual: true, runScripts: 'dangerously' });
   const w = dom.window;
+  w.localStorage.setItem('zjjjs_user', 'tester'); // 预置用户名，避免用户名门拦截后续测试
   // stub 环境（须在注入 app.js 之前）
   w.fetch = (url) => Promise.resolve({ json: () => Promise.resolve(readJSON(String(url).split('/').pop().split('?')[0])) });
   w.confirm = () => true; w.alert = () => {}; w.scrollTo = () => {};
@@ -71,7 +72,10 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     get roundState(){return roundState}, get practiceState(){return practiceState}, get examState(){return examState},
     feedbackHtml:feedbackHtml, startRound:startRound, startPractice:startPractice,
     startExam:window.startExam, submitExam:window.submitExam,
-    updateSR:updateSR, addWrong:addWrong, nav:nav, router:router, routes:routes
+    updateSR:updateSR, addWrong:addWrong, nav:nav, router:router, routes:routes, saveStore:saveStore,
+    curUser:curUser, enterUser:enterUser, switchUser:switchUser,
+    syncOn:syncOn, setSyncOn:setSyncOn, getToken:getToken, setToken:setToken,
+    pushCloud:pushCloud, pullCloud:pullCloud, syncPath:syncPath
   };`;
   const sBridge = w.document.createElement('script');
   sBridge.textContent = bridge;
@@ -180,6 +184,53 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   w.location.hash = '#wrong'; w.__t.router();
   const wrongPage = w.document.getElementById('app').textContent;
   ok('错题本页含「间隔重复复习」', /间隔重复复习/.test(wrongPage));
+
+  // ============ 11. 按用户名隔离本地进度 ============
+  console.log('\n【11】按用户名隔离本地进度');
+  const testerRaw = JSON.parse(w.localStorage.getItem('zjjjs_gq_v1_tester') || '{}');
+  ok('原用户 tester 进度已落盘', Object.keys(testerRaw.answered || {}).length > 0, 'n=' + Object.keys(testerRaw.answered || {}).length);
+  w.confirm = () => true;
+  t.switchUser(); // 清用户 → 显示用户名门
+  const gateTxt = w.document.getElementById('app').textContent;
+  ok('无用户名时显示用户名门', /先告诉我你的名字/.test(gateTxt));
+  w.document.getElementById('userName').value = 'buyer2';
+  w.document.getElementById('enterBtn').click();
+  ok('切换后新用户名生效', t.curUser() === 'buyer2');
+  ok('新用户进度为空（隔离）', Object.keys(t.store.answered).length === 0);
+  t.switchUser();
+  w.document.getElementById('userName').value = 'tester';
+  w.document.getElementById('enterBtn').click();
+  ok('切回 tester 进度恢复', Object.keys(t.store.answered).length > 0);
+
+  // ============ 12. GitHub 云同步 推/拉 ============
+  console.log('\n【12】GitHub 云同步（推/拉往返）');
+  w.localStorage.setItem('zjjjs_user', 'clouduser');
+  t.setToken('ghp_test_token'); t.setSyncOn(true);
+  t.enterUser('clouduser');
+  t.store.answered['qCLOUD'] = { correct: true, ts: 12345 };
+  t.saveStore();
+  const cloud = {};
+  w.fetch = (url, opts) => {
+    const u = String(url); opts = opts || {};
+    const key = u.split('?')[0];
+    if (u.includes('api.github.com')) {
+      if (u.includes('/git/ref/heads/main')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ object: { sha: 'abc' } }) });
+      if (u.includes('/git/refs') && (opts.method || 'GET') === 'POST') return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      if (u.includes('/contents/')) {
+        if ((opts.method || 'GET') === 'PUT') { cloud[key] = JSON.parse(opts.body).content; return Promise.resolve({ ok: true, json: () => Promise.resolve({}) }); }
+        if (cloud[key]) return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: cloud[key], sha: 's1' }) });
+        return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+      }
+    }
+    return Promise.resolve({ json: () => Promise.resolve(readJSON(key.split('/').pop().split('?')[0])) });
+  };
+  const pushed = await t.pushCloud();
+  ok('pushCloud 成功', pushed === true);
+  w.localStorage.removeItem('zjjjs_gq_v1_clouduser');
+  t.store = {};
+  const pulled = await t.pullCloud();
+  ok('pullCloud 成功', pulled === true);
+  ok('拉回云端进度（qCLOUD）', !!(t.store.answered && t.store.answered['qCLOUD']));
 
   finish();
 })().catch(e => { console.error('FATAL', e); process.exit(1); });

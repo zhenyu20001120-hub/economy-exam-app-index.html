@@ -14,14 +14,40 @@ const EXAM_SPEC = {
 const TARGET = 160;            // 三轮学习每轮题量下限
 const SR_INTERVALS = [0, 1, 3, 7]; // 间隔重复盒子
 
-// ---------- 存储 ----------
-const LS_KEY = 'zjjjs_gq_v1';
+// ---------- 存储（按用户名隔离） ----------
+const USER_KEY = 'zjjjs_user';        // 当前用户名
+const TOKEN_KEY = 'zjjjs_token';      // GitHub PAT（仅存本机）
+const SYNC_ON_KEY = 'zjjjs_sync_on';  // 是否启用云同步
+const SYNC_REPO = 'zhenyu20001120-hub/economy-exam-app-index.html';
+const SYNC_BRANCH = 'ee-sync';
+const API = 'https://api.github.com';
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+function curUser() { try { return localStorage.getItem(USER_KEY) || ''; } catch (e) { return ''; } }
+function setUser(n) { try { localStorage.setItem(USER_KEY, n); } catch (e) {} }
+function clearUser() { try { localStorage.removeItem(USER_KEY); } catch (e) {} }
+function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+function setToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+function syncOn() { try { return localStorage.getItem(SYNC_ON_KEY) === '1'; } catch (e) { return false; } }
+function setSyncOn(v) { try { localStorage.setItem(SYNC_ON_KEY, v ? '1' : '0'); } catch (e) {} }
+// 每个用户名一套独立存储桶，互不串
+function lsKey() { return 'zjjjs_gq_v1' + (curUser() ? '_' + curUser() : ''); }
 let store = loadStore();
 function loadStore() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; }
+  try { return JSON.parse(localStorage.getItem(lsKey())) || {}; } catch (e) { return {}; }
 }
-function saveStore() { try { localStorage.setItem(LS_KEY, JSON.stringify(store)); } catch (e) {} }
+let _pushTimer = null;
+function saveStore() {
+  try {
+    store._ts = Date.now();
+    localStorage.setItem(lsKey(), JSON.stringify(store));
+  } catch (e) {}
+  schedulePush();
+}
+function schedulePush() {
+  if (!syncOn() || !curUser() || !getToken()) return;
+  if (_pushTimer) clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(() => { pushCloud().catch(() => {}); }, 1500);
+}
 function backupProgress() {
   try {
     const code = btoa(unescape(encodeURIComponent(JSON.stringify(store))));
@@ -147,6 +173,7 @@ routes.home = () => {
         <span class="bless">🎯 祝你一次上岸</span>
       </div>
     </div>
+    <div class="userbar">当前用户：<b>${esc(curUser() || '游客')}</b> <span class="pill" style="cursor:pointer" onclick="switchUser()">切换账号</span></div>
     <div class="card"><div class="grid2">
       <div class="stat"><div class="n">${totalDone}</div><div class="l">累计做题</div></div>
       <div class="stat"><div class="n">${rate}%</div><div class="l">正确率</div></div>
@@ -163,6 +190,8 @@ routes.home = () => {
       <span class="ico">📝</span><div><div>模拟考试</div><div class="d">100题·限时·自动评分</div></div><span class="arrow">›</span></button>
     <button class="menu-btn" onclick="nav('chapters')">
       <span class="ico">📖</span><div><div>章节讲解 · 按章练习</div><div class="d">思维导图 · 知识回顾</div></div><span class="arrow">›</span></button>
+    <button class="menu-btn" onclick="nav('settings')">
+      <span class="ico">⚙️</span><div><div>设置 · 云同步</div><div class="d">GitHub 跨设备备份进度</div></div><span class="arrow">›</span></button>
     <div class="card sub" style="font-size:13px">题库共 <b>${BANK.length}</b> 道（单选 ${BANK.filter(q => q.type === 'single' && !q.caseBg).length} · 多选 ${BANK.filter(q => q.type === 'multi' && !q.caseBg).length} · 案例 ${BANK.filter(q => q.caseBg).length}），覆盖 2026 考纲 11 章。</div>
     <div class="row" style="margin-bottom:14px">
       <button class="ghost sm" onclick="backupProgress()">💾 备份进度</button>
@@ -780,13 +809,148 @@ function topbar(title, backJs) {
 }
 document.querySelectorAll('#tabbar button').forEach(b => b.onclick = () => nav(b.dataset.nav));
 
+// ==================================================================
+// 用户名门 + 云同步（保留旧版能力：按用户名隔离 + 跨设备备份）
+// ==================================================================
+function renderUserGate() {
+  $('#tabbar').hidden = true;
+  app().innerHTML = `
+    <div class="gate">
+      <div class="gate-card card">
+        <div class="gate-emoji">👤</div>
+        <h2>先告诉我你的名字</h2>
+        <div class="sub" style="margin-bottom:14px">进度和错题会按名字分开保存，多人共用一台设备也不串；分享给朋友时，各记各的。</div>
+        <input id="userName" class="inp" maxlength="20" placeholder="输入用户名，如 小明" />
+        <button id="enterBtn" style="margin-top:12px;width:100%">进入刷题</button>
+        <div class="sub" style="margin-top:10px;font-size:12px">仅本机记录，不会上传到任何服务器（除非你主动开启云同步）。</div>
+      </div>
+    </div>`;
+  const inp = $('#userName');
+  const go = () => {
+    const n = (inp.value || '').trim().replace(/[<>'"]/g, '');
+    if (!n) { inp.focus(); return; }
+    enterUser(n);
+  };
+  $('#enterBtn').onclick = go;
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  setTimeout(() => inp.focus(), 50);
+}
+function enterUser(name) {
+  setUser(name);
+  store = loadStore();          // 加载该用户名自己的进度桶
+  saveStore();
+  startApp();
+}
+function switchUser() {
+  if (!confirm('切换账号？当前进度已保存在「' + (curUser() || '游客') + '」名下。')) return;
+  clearUser();
+  store = {}; S();
+  renderUserGate();
+}
+function startApp() {
+  $('#tabbar').hidden = false;
+  router();
+}
+
+// ---- 云同步（GitHub Contents API，进度写到 ee-sync 分支 data/<用户名>/progress.json） ----
+function syncPath() { return 'data/' + encodeURIComponent(curUser()) + '/progress.json'; }
+function b64(s) { return btoa(unescape(encodeURIComponent(s))); }
+function deb64(s) { return decodeURIComponent(escape(atob(s))); }
+async function ensureBranch() {
+  try {
+    const headers = { Authorization: 'token ' + getToken(), Accept: 'application/vnd.github+json' };
+    const r = await fetch(`${API}/repos/${SYNC_REPO}/git/ref/heads/main`, { headers });
+    if (!r.ok) return;
+    const sha = (await r.json()).object.sha;
+    await fetch(`${API}/repos/${SYNC_REPO}/git/refs`, {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'refs/heads/' + SYNC_BRANCH, sha })
+    });
+  } catch (e) {}
+}
+async function pushCloud() {
+  if (!syncOn() || !curUser() || !getToken()) return false;
+  await ensureBranch();
+  const path = syncPath();
+  const headers = { Authorization: 'token ' + getToken(), Accept: 'application/vnd.github+json' };
+  let sha;
+  try {
+    const g = await fetch(`${API}/repos/${SYNC_REPO}/contents/${path}?ref=${SYNC_BRANCH}`, { headers });
+    if (g.ok) sha = (await g.json()).sha;
+  } catch (e) {}
+  const body = { message: 'sync ' + curUser() + ' ' + Date.now(), content: b64(JSON.stringify(store)), branch: SYNC_BRANCH };
+  if (sha) body.sha = sha;
+  const r = await fetch(`${API}/repos/${SYNC_REPO}/contents/${path}`, {
+    method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  return r.ok;
+}
+async function pullCloud() {
+  if (!syncOn() || !curUser() || !getToken()) return false;
+  const path = syncPath();
+  const headers = { Authorization: 'token ' + getToken(), Accept: 'application/vnd.github+json' };
+  let data;
+  try {
+    const r = await fetch(`${API}/repos/${SYNC_REPO}/contents/${path}?ref=${SYNC_BRANCH}`, { headers });
+    if (!r.ok) return false;
+    data = await r.json();
+  } catch (e) { return false; }
+  try {
+    const remote = JSON.parse(deb64(data.content));
+    if (!store._ts || (remote._ts || 0) > store._ts) { store = Object.assign(loadStore(), remote); saveStore(); }
+    return true;
+  } catch (e) { return false; }
+}
+routes.settings = () => {
+  S();
+  const txt = getToken();
+  app().innerHTML = `
+    ${topbar('设置 · 云同步', "nav('home')")}
+    <div class="card">
+      <h3>GitHub 云同步（跨设备）</h3>
+      <div class="sub" style="margin-bottom:10px">把当前用户「${esc(curUser() || '游客')}」的进度 / 错题备份到你自己的 GitHub 仓库（分支 ${SYNC_BRANCH}），手机电脑互通。需要你自己生成一个有 <b>repo</b> 权限的 Token，仅存本机，不会泄露给任何人。</div>
+      <label class="lbl">Personal Access Token</label>
+      <input id="token" class="inp" type="password" placeholder="ghp_xxx（仅存本机）" value="${esc(txt)}" />
+      <label class="lbl" style="margin-top:12px;display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="syncOn" ${syncOn() ? 'checked' : ''} /> 启用云同步（自动备份 + 打开时拉取）
+      </label>
+      <div class="row" style="margin-top:14px">
+        <button onclick="saveSettings()">保存设置</button>
+        <button class="ghost" onclick="testPush()">立即备份</button>
+        <button class="ghost" onclick="testPull()">拉取最新</button>
+      </div>
+      <div id="syncMsg" class="sub" style="margin-top:10px"></div>
+    </div>
+    <div class="card sub" style="font-size:13px">
+      <b>怎么生成 Token：</b> GitHub 网页 → 右上角头像 → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic)，勾选 <b>repo</b>，生成后复制粘贴到上面。仓库固定为 ${SYNC_REPO}（你自己的公开仓库，进度对别人可见但无所谓）。
+    </div>`;
+};
+window.saveSettings = () => {
+  setToken($('#token').value.trim());
+  setSyncOn($('#syncOn').checked);
+  const m = $('#syncMsg'); m.textContent = '已保存。' + (syncOn() ? '云同步已开启，进度将自动备份。' : '云同步已关闭。');
+  if (syncOn()) pushCloud().then(ok => { m.textContent += ok ? ' 已成功备份一次。' : ' 备份失败（检查 Token/网络）。'; }).catch(() => {});
+};
+window.testPush = () => {
+  const m = $('#syncMsg'); m.textContent = '备份中…';
+  pushCloud().then(ok => { m.textContent = ok ? '✅ 备份成功' : '❌ 备份失败（检查 Token/网络/权限）'; }).catch(() => { m.textContent = '❌ 备份出错'; });
+};
+window.testPull = () => {
+  const m = $('#syncMsg'); m.textContent = '拉取中…';
+  pullCloud().then(ok => { m.textContent = ok ? '✅ 已拉取最新进度' : '❌ 拉取失败（无备份或无权限）'; router(); }).catch(() => { m.textContent = '❌ 拉取出错'; });
+};
+
 // ---------- 启动 ----------
 (async function () {
   app().innerHTML = `<div class="empty" style="padding-top:60px">⏳<div style="margin-top:10px;font-weight:600;color:var(--brand)">正在准备题库…</div></div>`;
   try {
     await loadBank();
-    $('#tabbar').hidden = false;
-    router();
+    if (!curUser()) {
+      renderUserGate();
+    } else {
+      if (syncOn()) { try { await pullCloud(); } catch (e) {} }
+      startApp();
+    }
   } catch (e) {
     app().innerHTML = '<div class="empty">⚠️<br><span class="sub">' + esc(e.message) + '</span></div>';
   }

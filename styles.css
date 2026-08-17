@@ -151,3 +151,15 @@ button:disabled{opacity:.5}
 .mm-box summary{cursor:pointer;font-weight:700;color:var(--brand);font-size:14px}
 .mm-node{font-size:14px;line-height:1.7;color:var(--ink)}
 .mm-node.mm-t{font-weight:700;color:var(--brand);margin-top:4px}
+
+/* ===== 用户名门 / 设置 ===== */
+.gate{min-height:calc(100vh - 120px);display:flex;align-items:center;justify-content:center;padding:16px}
+.gate-card{max-width:420px;width:100%;text-align:center}
+.gate-emoji{font-size:54px;margin-bottom:6px}
+.gate-card h2{margin-bottom:6px}
+.inp{width:100%;box-sizing:border-box;padding:12px 14px;font-size:16px;font-family:inherit;
+  border:1.5px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);margin-top:6px}
+.inp:focus{outline:none;border-color:var(--brand)}
+.lbl{display:block;font-weight:600;font-size:14px;margin-top:6px;text-align:left}
+.userbar{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--sub);margin-bottom:12px}
+.userbar b{color:var(--ink)}
