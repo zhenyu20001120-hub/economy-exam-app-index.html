@@ -4,7 +4,7 @@
  *   - 题库等数据 JSON **network-first**（更新立刻生效，离线时回退缓存）；
  *   - 导航请求回退 index.html（SPA）。
  * 版本号 CACHE 每次结构性更新时 +1，激活时自动清掉老缓存。 */
-const CACHE = 'gq-exam-v2';
+const CACHE = 'gq-exam-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -65,17 +65,18 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 其它同源静态资源：cache-first，回退网络并写缓存
+  // 其它同源静态资源：stale-while-revalidate
+  // 先返回缓存（秒开、离线可用），后台拉取新版写入缓存，下次访问即用上新 app.js / styles.css，
+  // 避免每次改 js 都要手动升级 CACHE 版本才生效（之前两次都栽在老缓存）。
   e.respondWith(
     caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
+      const network = fetch(req).then((res) => {
         if (res && res.status === 200 && res.type === 'basic') {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
+          caches.open(CACHE).then((c) => c.put(req, res.clone()));
         }
         return res;
       }).catch(() => cached);
+      return cached || network;
     }),
   );
 });
