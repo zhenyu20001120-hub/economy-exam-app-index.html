@@ -151,6 +151,15 @@ button:disabled{opacity:.5}
 .mm-box summary{cursor:pointer;font-weight:700;color:var(--brand);font-size:14px}
 .mm-node{font-size:14px;line-height:1.7;color:var(--ink)}
 .mm-node.mm-t{font-weight:700;color:var(--brand);margin-top:4px}
+.mm-def{font-size:13px;line-height:1.65;color:var(--sub);margin:2px 0 6px;padding-left:6px;border-left:2px solid var(--line)}
+.opt-note b{margin-right:4px}
+.opt-note .mark{display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;font-size:12px;font-weight:700;margin-right:6px;color:#fff}
+.opt-note .mark.ok{background:var(--ok)}
+.opt-note .mark.no{background:var(--bad)}
+.seg{display:flex;background:var(--bg);border-radius:12px;padding:4px;gap:4px;margin:12px 0}
+.seg-i{flex:1;text-align:center;padding:11px 6px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sub);cursor:pointer}
+.seg-i.on{background:var(--card);color:var(--brand);box-shadow:var(--shadow)}
+
 
 /* ===== 用户名门 / 设置 ===== */
 .gate{min-height:calc(100vh - 120px);display:flex;align-items:center;justify-content:center;padding:16px}

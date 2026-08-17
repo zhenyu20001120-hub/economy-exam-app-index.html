@@ -70,7 +70,8 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   const bridge = `window.__t = {
     get BANK(){return BANK}, get BYID(){return BYID}, get store(){return store},
     get roundState(){return roundState}, get practiceState(){return practiceState}, get examState(){return examState},
-    feedbackHtml:feedbackHtml, startRound:startRound, startPractice:startPractice,
+    feedbackHtml:feedbackHtml, startRound:startRound, startChapterRound:startChapterRound, startPractice:startPractice,
+    renderRoundPicker:renderRoundPicker, finishRound:finishRound, activeStudyMatches:activeStudyMatches,
     startExam:window.startExam, submitExam:window.submitExam,
     updateSR:updateSR, addWrong:addWrong, nav:nav, router:router, routes:routes, saveStore:saveStore,
     curUser:curUser, enterUser:enterUser, switchUser:switchUser,
@@ -124,11 +125,12 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   console.log('\n【5】三层解析（选项/思路/知识点+思维导图）');
   const id = t.BANK.find(x => x.kp && t.BYID && x.chapter && lecture[x.chapter] && lecture[x.chapter].map).id;
   const fb = t.feedbackHtml(t.BYID[id], true);
-  ok('① 选项逐项解析层存在', /选项解析|选项解析（逐项讲透）/.test(fb));
-  ok('② 出题思路层存在', /出题思路/.test(fb));
+  ok('① 选项逐项解析层存在', /选项解析|选项逐项解析/.test(fb));
+  ok('① 含错误选项解释（错在哪里）', /不是本题的正确结论/.test(fb));
+  ok('② 主题考点（出题思路）存在', /主题考点/.test(fb));
   ok('③ 知识点回顾层存在', /知识点回顾/.test(fb));
   ok('本题对应知识点卡片存在', /本题对应知识点/.test(fb));
-  ok('思维导图渲染 (mm-box)', /mm-box/.test(fb));
+  ok('③ 思维导图含名词/公式释义(mm-def)', /mm-def/.test(fb));
 
   // ============ 6. 刷题提交即判对错 ============
   console.log('\n【6】刷题：提交即判对错 + 记录');
@@ -231,6 +233,46 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   const pulled = await t.pullCloud();
   ok('pullCloud 成功', pulled === true);
   ok('拉回云端进度（qCLOUD）', !!(t.store.answered && t.store.answered['qCLOUD']));
+
+  // ============ 13. 三轮进度持久化 + 继续练习 ============
+  console.log('\n【13】三轮学习：进度持久化 + 继续练习（修复退出丢进度）');
+  t.store.activeStudy = undefined; t.saveStore();
+  t.startRound(1);
+  const total1 = t.roundState.ids.length;
+  function ansCur() {
+    const q = t.BYID[t.roundState.ids[t.roundState.i]];
+    const opts = w.document.querySelectorAll('#opts .opt');
+    opts.forEach(el => { if (el.dataset.k === q.answer[0]) el.click(); });
+    w.document.querySelector('#submitBtn').click();            // 提交→显示解析
+    const nb = w.document.querySelector('#submitBtn'); if (nb) nb.click(); // 进入下一题
+  }
+  ansCur(); ansCur(); ansCur();
+  ok('作答后 activeStudy 已持久化(i>0)', !!(t.store.activeStudy && t.store.activeStudy.i > 0), 'i=' + (t.store.activeStudy && t.store.activeStudy.i));
+  // 退出再进入：应“继续练习”而非从头
+  w.location.hash = '#home'; w.__t.router();
+  w.location.hash = '#rounds'; w.__t.router();
+  const beforeResume = t.store.activeStudy ? t.store.activeStudy.i : 0;
+  t.startRound(1);
+  ok('再进入第1轮从断点继续（继续练习）', t.roundState.i === beforeResume && t.roundState.i > 0, 'i=' + t.roundState.i);
+  // 完成本轮应清除进行中会话（可再学一遍）
+  t.roundState.i = t.roundState.ids.length - 1;
+  t.finishRound();
+  ok('完成本轮后清除 activeStudy（进度可重新开始）', !t.store.activeStudy);
+  ok('完成本轮写入 roundResults', !!t.store.roundResults['r1']);
+
+  // ============ 14. 按章节学 + 三轮含多选 ============
+  console.log('\n【14】按章节学（C）+ 三轮含多选（E）');
+  t.store.activeStudy = undefined; t.saveStore();
+  t.startChapterRound('工商-1');
+  ok('按章节学：进入 chapter 模式', !!(t.roundState && t.roundState.kind === 'chapter'));
+  ok('按章节学：题目均为第1章', !!(t.roundState && t.roundState.ids.every(id => t.BYID[id].chapter === '工商-1')));
+  const chMulti = t.roundState ? t.roundState.ids.filter(id => t.BYID[id].type === 'multi').length : 0;
+  ok('按章节学：本章含多选', chMulti > 0, 'multi=' + chMulti);
+  t.store.activeStudy = undefined; t.saveStore();
+  t.startRound(1);
+  const r1multi = t.roundState.ids.filter(id => t.BYID[id].type === 'multi').length;
+  ok('三轮第1轮含多选', r1multi > 0, 'multi=' + r1multi);
+  ok('三轮第1轮题量≥160', t.roundState.ids.length >= 160, 'n=' + t.roundState.ids.length);
 
   finish();
 })().catch(e => { console.error('FATAL', e); process.exit(1); });

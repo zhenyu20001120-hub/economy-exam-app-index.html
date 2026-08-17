@@ -614,17 +614,31 @@ def _derive_oa(item):
     ans = set(item.get("answer") or [])
     ana = (item.get("analysis") or "").strip()
     first = (ana.split("。")[0] + "。") if ana else ""
+    kp = _derive_kp(item)
+    kp_short = (kp.split("。")[0] + "。") if kp else ""
+    # 正确选项的文字标签，如 "A.企业总体战略、B.企业业务战略"
+    correct_label = "、".join("%s.%s" % (chr(65 + i), opts[i]) for i in sorted(ans) if i < len(opts))
     oa = []
     for i, o in enumerate(opts):
         if i in ans:
-            oa.append("该选项正确。" + (first if first else "符合题意。"))
+            oa.append("✅ 该选项正确。" + (first if first else "符合题意。"))
         else:
-            oa.append("该选项错误，与题意或正确结论不符。")
+            # 错项：明确指出「选项文字」不是正确结论，并给出本题正确选项与考点，告诉学员错在哪里
+            if correct_label:
+                scope = ("（考点：%s）" % kp_short) if kp_short else ""
+                oa.append("❌ 该选项错误。「%s」不是本题的正确结论%s正确选项应为：%s。" % (o, scope, correct_label))
+            else:
+                oa.append("❌ 该选项错误。「%s」不符合题意。" % o)
     return oa
 
 def _derive_logic(item):
     tmap = {"single": "单选题", "multiple": "多选题", "case": "案例分析题"}
-    return "本题为%s，考查本章核心考点；抓住题干关键词、区分易混概念即可准确判定。" % tmap.get(item["type"], "题")
+    kp = _derive_kp(item)
+    s = "本题为%s" % tmap.get(item["type"], "题")
+    if kp:
+        s += "，主题考点：%s" % (kp.split("。")[0] + ("。" if not kp.strip().endswith("。") else ""))
+    s += "抓住题干关键词、区分易混概念即可准确判定。"
+    return s
 
 def _derive_kp(item):
     """本题对应知识点(考点): 优先用解析首句, 兜底用出题思路。"""

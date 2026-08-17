@@ -348,14 +348,14 @@ function feedbackHtml(q, correct) {
   const ansTxt = q.answer;
   let html = `<div class="explain">
     <div class="lbl">${correct ? '<span class="res-ok">✓ 回答正确</span>' : '<span class="res-bad">✗ 回答错误</span>'} · 正确答案：${esc(ansTxt)}</div>`;
-  html += `<div class="layer"><div class="layer-h">① 选项解析（逐项讲透）</div>`;
+  html += `<div class="layer"><div class="layer-h">① 选项逐项解析（错在哪里 · 为何正确）</div>`;
   if (q.explain) html += `<p>${esc(q.explain)}</p>`;
   (q.oa || []).forEach((t, i) => {
     const mk = q.answer.includes(String.fromCharCode(65 + i)) ? 'ok' : 'no';
-    html += `<div class="opt-note ${mk}"><b>${String.fromCharCode(65 + i)}.</b> ${esc(t)}</div>`;
+    html += `<div class="opt-note ${mk}"><span class="mark ${mk}">${mk === 'ok' ? '✓' : '✗'}</span><b>${String.fromCharCode(65 + i)}.</b> ${esc(t)}</div>`;
   });
   html += `</div>`;
-  html += `<div class="layer"><div class="layer-h">② 出题思路</div><p>${esc(q.logic || '')}</p></div>`;
+  html += `<div class="layer"><div class="layer-h">② 出题思路（主题与解题要点）</div><p>${esc(q.logic || '')}</p></div>`;
   const m = LECTURE[q.chapter] || {};
   html += `<div class="layer"><div class="layer-h">③ 知识点回顾与讲解（${esc(chName(q.chapter))}）</div>`;
   if (q.kp) html += `<div class="kp-callout"><b>本题对应知识点：</b>${esc(q.kp)}</div>`;
@@ -365,12 +365,14 @@ function feedbackHtml(q, correct) {
   html += `</div></div>`;
   return html;
 }
-// 思维导图渲染（嵌套树: {t, c:[...]} 或字符串叶子）
+// 思维导图渲染（嵌套树: 节点 {t, d?, c:[...]}；叶子可为字符串或 {t, d}）
 function renderMind(node, depth) {
   if (Array.isArray(node)) return node.map(n => renderMind(n, depth)).join('');
   if (typeof node === 'string') return `<div class="mm-node" style="margin-left:${depth * 16}px">· ${esc(node)}</div>`;
   if (node && node.t) {
     let h = `<div class="mm-node mm-t" style="margin-left:${depth * 16}px">▸ ${esc(node.t)}</div>`;
+    // 再细化一层：每个名词/公式都给出简明释义
+    if (node.d) h += `<div class="mm-def" style="margin-left:${(depth + 1) * 16}px">${esc(node.d)}</div>`;
     (node.c || []).forEach(c => h += renderMind(c, depth + 1));
     return h;
   }
@@ -390,7 +392,31 @@ function recordAnswer(q, correct, mode) {
 // ==================================================================
 // 三轮学习（保留特色功能）
 // ==================================================================
-let roundState = null;
+let roundState = null;           // 当前进行中的学习会话（内存镜像）
+let roundTab = 'round';          // rounds 页签：'round' 全库三轮 / 'chapter' 按章节学
+
+// 持久化的“进行中学习会话”：退出页面也不丢失，回来可“继续练习”
+// { kind:'round'|'chapter', round?, chapter?, ids:[], i, done, correct }
+function saveActiveStudy() {
+  if (!roundState) return;
+  store.activeStudy = {
+    kind: roundState.kind,
+    round: roundState.round || 0,
+    chapter: roundState.chapter || '',
+    ids: roundState.ids,
+    i: roundState.i,
+    done: roundState.done,
+    correct: roundState.correct,
+  };
+  saveStore();
+}
+function clearActiveStudy() { delete store.activeStudy; saveStore(); }
+function activeStudyMatches(kind, key) {
+  const a = store.activeStudy;
+  if (!a || a.kind !== kind) return false;
+  if (kind === 'round') return a.round === key && a.i < a.ids.length;
+  return a.chapter === key && a.i < a.ids.length;
+}
 routes.rounds = renderRoundPicker;
 function getRoundQuestions(round) { try { return (store.roundQuestions && store.roundQuestions[round]) || null; } catch (e) { return null; } }
 function setRoundQuestions(round, ids) { store.roundQuestions = store.roundQuestions || {}; store.roundQuestions[round] = ids; saveStore(); }
@@ -398,7 +424,8 @@ function setRoundQuestions(round, ids) { store.roundQuestions = store.roundQuest
 function buildRound(roundNum) {
   roundNum = +roundNum || 1;
   const stored = getRoundQuestions(roundNum);
-  if (stored && stored.length) return stored.map(id => BYID[id]).filter(Boolean);
+  let _stored = (stored || []).filter(id => BYID[id]);   // 防御：剔除更新后已不存在的题
+  if (_stored.length) return _stored.map(id => BYID[id]);
   let picked = new Set(store.roundsPicked || []);
   let pool = BANK.filter(x => !picked.has(x.id));
   if (pool.length === 0) { store.roundsPicked = []; saveStore(); pool = BANK.slice(); }
@@ -425,57 +452,118 @@ function buildRound(roundNum) {
 function renderRoundPicker() {
   S();
   const rr = store.roundResults || {};
-  app().innerHTML = `${topbar('三轮学习', "nav('home')")}
-    <div class="card sub">逐题提交即判对错 + 三层解析 + 对应知识点；每轮 ≥160 题按第1~11章顺序学，三轮学透基础更扎实，再去模拟考试。</div>
-    <div class="round-pick">
-      ${[1, 2, 3].map(r => {
-    const x = rr['r' + r];
-    const label = x ? ('正确率 ' + x.acc + '%') : '未开始';
-    return `<div class="rp ${x ? 'done' : ''}" onclick="startRound(${r})">
+  const as = store.activeStudy;
+  const chs = CHAPTERS['工商'] || [];
+  const groups = {};
+  chs.forEach(c => { (groups[c.part] = groups[c.part] || []).push(c); });
+  const cnt = cid => BANK.filter(q => q.chapter === cid).length;
+  const multiCnt = cid => BANK.filter(q => q.chapter === cid && q.type === 'multi').length;
+  let html = `${topbar('三轮学习', "nav('home')")}
+    <div class="card sub">逐题提交即判对错 + 三层解析 + 对应知识点；支持<b>全库三轮</b>与<b>按章节学</b>两种方式，进度自动保存，退出后可在「继续练习」接着做。</div>
+    <div class="seg">
+      <span class="seg-i ${roundTab === 'round' ? 'on' : ''}" onclick="roundTab='round';renderRoundPicker()">🌀 全库三轮</span>
+      <span class="seg-i ${roundTab === 'chapter' ? 'on' : ''}" onclick="roundTab='chapter';renderRoundPicker()">📖 按章节学</span>
+    </div>`;
+  if (roundTab === 'round') {
+    html += `<div class="round-pick">` + [1, 2, 3].map(r => {
+      const x = rr['r' + r];
+      const label = x ? ('正确率 ' + x.acc + '%') : '未开始';
+      const cont = activeStudyMatches('round', r);
+      const btn = cont ? ('继续练习（第' + (as.i + 1) + '/' + as.ids.length + '）') : (x ? '再学一遍' : '开始学习');
+      return `<div class="rp ${x ? 'done' : ''}" onclick="startRound(${r})">
           <div class="badge">${r === 1 ? '首轮' : r === 2 ? '巩固' : '冲刺'}</div>
           <div class="no">${r}</div>
           <div class="t">第 ${r} 轮</div>
           <div class="s">${label}</div>
-          <button class="sm" style="margin-top:10px">${x ? '再学一遍' : '开始学习'}</button>
+          <button class="sm" style="margin-top:10px">${btn}</button>
         </div>`;
-  }).join('')}
-    </div>
-    <div class="card sub">规则：不计时自由作答；三轮抽题互不重复，累计覆盖全库 ${BANK.length} 题；学完一轮看正确率，错题自动进错题本。</div>
+    }).join('') + `</div>
+    <div class="card sub">规则：不计时自由作答；三轮抽题互不重复，累计覆盖全库 ${BANK.length} 题；学完一轮看正确率，错题自动进错题本。每轮均含单选与多选。</div>
     <button class="ghost sm" onclick="if(confirm('重置三轮历史？已抽题会清空可重新抽。')){store.roundsPicked=[];store.roundQuestions={};store.roundResults={};saveStore();renderRoundPicker();}">🔄 重置三轮历史</button>`;
+  } else {
+    html += Object.entries(groups).map(([part, list]) => `
+      <div class="card">
+        <h3>${esc(part || '其他')}</h3>
+        ${list.map(c => {
+          const cont = activeStudyMatches('chapter', c.id);
+          const btn = cont ? ('继续练习（第' + (as.i + 1) + '/' + as.ids.length + '）') : ('开始学习（' + cnt(c.id) + '题）');
+          return `<div class="opt" style="cursor:pointer;display:flex;align-items:center;gap:10px" onclick="startChapterRound('${c.id}')">
+            <div style="flex:1">${esc(c.name)} ${multiCnt(c.id) ? `<span class="pill multi">含多选${multiCnt(c.id)}</span>` : ''}</div>
+            <button class="sm" style="flex:none">${btn}</button>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+    html += `<div class="card sub">按章节学：只练<b>所选一章</b>的题目（含单选与多选），更适合分章突破；进度同样自动保存，退出后可「继续练习」。</div>`;
+  }
+  app().innerHTML = html;
 }
 window.startRound = (r) => {
-  const items = buildRound(r);
-  if (!items.length) { alert('题库为空'); return; }
-  roundState = { ids: items.map(x => x.id), i: 0, round: r, done: 0, correct: 0 };
+  if (!BANK.length) { alert('题库为空'); return; }
+  if (activeStudyMatches('round', r)) {
+    const a = store.activeStudy;
+    roundState = { kind: 'round', round: r, ids: a.ids.slice(), i: a.i, done: a.done, correct: a.correct };
+  } else {
+    const items = buildRound(r);
+    roundState = { kind: 'round', round: r, ids: items.map(x => x.id), i: 0, done: 0, correct: 0 };
+    saveActiveStudy();
+  }
+  renderRoundQ();
+};
+window.startChapterRound = (cid) => {
+  if (!cid || !BYID) return;
+  if (activeStudyMatches('chapter', cid)) {
+    const a = store.activeStudy;
+    roundState = { kind: 'chapter', chapter: cid, ids: a.ids.slice(), i: a.i, done: a.done, correct: a.correct };
+  } else {
+    const items = BANK.filter(x => x.chapter === cid);
+    if (!items.length) { alert('该章暂无题目'); return; }
+    roundState = { kind: 'chapter', chapter: cid, ids: items.map(x => x.id), i: 0, done: 0, correct: 0 };
+    saveActiveStudy();
+  }
   renderRoundQ();
 };
 function renderRoundQ() {
   const st = roundState; if (!st) return nav('rounds');
   const q = BYID[st.ids[st.i]];
-  app().innerHTML = `${topbar(`三轮·第${st.round}/3轮 (${st.i + 1}/${st.ids.length})`, "if(confirm('退出本轮？进度不计入。'))nav('rounds')")}
+  const isCh = st.kind === 'chapter';
+  const prefix = isCh ? '按章学习' : ('三轮·第' + st.round + '/3轮');
+  const backJs = isCh
+    ? "if(confirm('退出本章学习？进度已保存，可随时继续。'))nav('rounds')"
+    : "if(confirm('退出本轮？进度已保存，可在「继续练习」接着做。'))nav('rounds')";
+  app().innerHTML = `${topbar(`${prefix} (${st.i + 1}/${st.ids.length})`, backJs)}
     <div class="progress"><i style="width:${st.i / st.ids.length * 100}%"></i></div>
     <div class="sub" style="margin-bottom:8px">已学 <b id="rDone">${st.done}</b>/${st.ids.length} · 正确率 <b id="rAcc">${st.done ? Math.round(st.correct / st.done * 100) : 0}%</b></div>
-    ${questionCard(q, { mode: 'round' })}`;
+    ${questionCard(q, { mode: isCh ? 'chapter' : 'round' })}`;
   wireQuestion(q, {
-    mode: 'round',
-    onResult: (c) => { st.done++; if (c) st.correct++; const d = $('#rDone'); if (d) d.textContent = st.done; const a = $('#rAcc'); if (a) a.textContent = (st.done ? Math.round(st.correct / st.done * 100) : 0) + '%'; },
-    onNext: () => { if (st.i < st.ids.length - 1) { st.i++; renderRoundQ(); } else finishRound(); }
+    mode: isCh ? 'chapter' : 'round',
+    onResult: (c) => {
+      st.done++; if (c) st.correct++;
+      const d = $('#rDone'); if (d) d.textContent = st.done;
+      const a = $('#rAcc'); if (a) a.textContent = (st.done ? Math.round(st.correct / st.done * 100) : 0) + '%';
+      saveActiveStudy();
+    },
+    onNext: () => { if (st.i < st.ids.length - 1) { st.i++; saveActiveStudy(); renderRoundQ(); } else finishRound(); }
   });
 }
 function finishRound() {
   const st = roundState;
   const acc = st.done ? Math.round(st.correct / st.done * 100) : 0;
-  store.roundResults = store.roundResults || {};
-  store.roundResults['r' + st.round] = { done: st.done, correct: st.correct, acc: acc, ts: Date.now() };
-  saveStore();
-  const next = st.round < 3;
-  app().innerHTML = `${topbar('三轮学习 · 第' + st.round + '/3轮 完成', "nav('rounds')")}
+  if (st.kind === 'round') {
+    store.roundResults = store.roundResults || {};
+    store.roundResults['r' + st.round] = { done: st.done, correct: st.correct, acc: acc, ts: Date.now() };
+  }
+  clearActiveStudy();   // 本轮/本章完成，清除进行中会话，下次进入重新抽/开始
+  const isCh = st.kind === 'chapter';
+  const next = st.kind === 'round' && st.round < 3;
+  app().innerHTML = `${topbar((isCh ? '按章学习' : '三轮学习 · 第' + st.round + '/3轮') + ' 完成', "nav('rounds')")}
     <div class="card center">
       <div class="scorebig" style="color:var(--brand)">${acc}%</div>
       <div class="sub">本轮共 ${st.done} 题 · 答对 ${st.correct}</div>
       <div style="margin-top:8px;font-weight:600">${acc >= 80 ? '太棒了，这一轮基础扎实！' : '不错，错题都收好了，继续巩固～'}</div>
       <div class="row" style="margin-top:18px">
-        ${next ? `<button onclick="startRound(${st.round + 1})">进入第 ${st.round + 1} 轮 →</button>` : `<button class="ghost" onclick="nav('exam')">📝 三轮学完，去模拟考试！</button>`}
+        ${isCh
+          ? `<button onclick="startChapterRound('${st.chapter}')">再学本章</button>`
+          : (next ? `<button onclick="startRound(${st.round + 1})">进入第 ${st.round + 1} 轮 →</button>` : `<button class="ghost" onclick="nav('exam')">📝 三轮学完，去模拟考试！</button>`)}
         <button class="ghost" onclick="nav('wrong')">看错题本</button>
       </div>
     </div>`;
