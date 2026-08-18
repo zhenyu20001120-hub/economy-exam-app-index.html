@@ -6,12 +6,12 @@
   --bad:#c0392b; --badbg:#fbeaea; --warn:#b7791f; --gold:#e6a417;
   --shadow:0 2px 8px rgba(180,110,50,.10),0 1px 2px rgba(120,70,30,.06);
 }
-@media (prefers-color-scheme: dark){
-  :root{ --bg:#171009; --card:#241a12; --ink:#f3e8dd; --sub:#b6a293; --line:#3a2a1d;
-    --brand:#f0913f; --brand2:#f7ad63; --leaf:#7cc267; --ok:#3ecf9a; --okbg:#12281f;
-    --bad:#f2837a; --badbg:#2a1613; --warn:#e0b34d; --gold:#e0b34d;
-    --shadow:0 2px 10px rgba(0,0,0,.45);}
-}
+/* 深色不再随系统自动切换（避免用户在浅色偏好下看到深色）；
+   改为由 <html data-theme="dark"> 控制，默认浅色，右上角按钮可切换并记忆。 */
+:root[data-theme="dark"]{ --bg:#171009; --card:#241a12; --ink:#f3e8dd; --sub:#b6a293; --line:#3a2a1d;
+  --brand:#f0913f; --brand2:#f7ad63; --leaf:#7cc267; --ok:#3ecf9a; --okbg:#12281f;
+  --bad:#f2837a; --badbg:#2a1613; --warn:#e0b34d; --gold:#e0b34d;
+  --shadow:0 2px 10px rgba(0,0,0,.45);}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);
@@ -88,7 +88,7 @@ button:disabled{opacity:.5}
 .progress>i{display:block;height:100%;background:var(--brand);transition:width .3s}
 .sticky-actions{position:sticky;bottom:calc(72px + env(safe-area-inset-bottom));margin-top:8px}
 /* 顶栏 */
-.topbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-right:58px}
 .topbar .back{background:var(--card);border:1px solid var(--line);color:var(--ink);width:40px;height:40px;
   border-radius:10px;padding:0;font-size:20px;flex:none}
 .topbar .t{font-weight:700;font-size:17px}
@@ -175,6 +175,42 @@ button:disabled{opacity:.5}
 /* 侧栏品牌（仅电脑版显示，手机版隐藏） */
 .brand{display:none}
 
+/* 主题切换悬浮按钮（右上角，浅/深切换） */
+.theme-toggle{position:fixed;top:14px;right:14px;z-index:60;width:42px;height:42px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;
+  background:var(--card);color:var(--ink);border:1.5px solid var(--line);box-shadow:var(--shadow);cursor:pointer}
+.theme-toggle:active{transform:scale(.94)}
+
+/* 侧边栏主题切换按钮：手机版隐藏（用右上角悬浮按钮），电脑版显示在侧栏底部 */
+.sidebar-theme{display:none}
+
+/* 学习页双栏布局：左题目 / 右答题卡。手机版单栏（右栏隐藏），电脑版（≥768px）显示右栏 */
+.study-layout{display:block}
+.study-main{min-width:0}
+.study-aside{display:none}
+.palette{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.palette-h{font-weight:800;color:var(--brand);font-size:15px;margin-bottom:12px}
+.palette-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:8px}
+.pc{height:38px;border-radius:9px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);
+  font-size:14px;font-weight:600;cursor:pointer;padding:0;line-height:1;transition:.12s}
+.pc:hover{border-color:var(--brand)}
+.pc.ok{background:var(--okbg);color:var(--ok);border-color:var(--ok)}
+.pc.bad{background:var(--badbg);color:var(--bad);border-color:var(--bad)}
+.pc.ans{background:color-mix(in srgb,var(--brand) 16%,var(--card));color:var(--brand);border-color:var(--brand)}
+.pc.cur{box-shadow:0 0 0 2px var(--brand);border-color:var(--brand)}
+.palette-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--sub)}
+.palette-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;
+  vertical-align:middle;background:var(--line)}
+.palette-legend .dot.ok{background:var(--ok)}
+.palette-legend .dot.bad{background:var(--bad)}
+.palette-sub{margin-top:10px;font-size:13px;color:var(--sub)}
+.palette-stat{font-size:13px;color:var(--ink);font-weight:600}
+.palette-stat b{color:var(--brand)}
+.palette-sec{margin-bottom:14px}
+.palette-sec-h{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;
+  color:var(--sub);margin-bottom:8px}
+.palette-sec-n{font-weight:600;color:var(--brand)}
+
 /* ===== 电脑版排版（≥768px）：左侧固定导航 + 宽内容区，与手机版彻底分开 ===== */
 @media (min-width: 768px) {
   body{ padding-bottom: 24px; }
@@ -226,4 +262,20 @@ button:disabled{opacity:.5}
   .opt{ padding: 15px 18px; }
   .sticky-actions{ bottom: 22px; }
   .qstem{ font-size: 18px; }
+
+  /* 双栏：左题目 + 右答题卡（参考粉笔，填满右侧空白） */
+  .study-layout{ display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 24px; align-items: start; }
+  .study-aside{ display: block; position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow: auto; }
+  .pc{ height: 40px; }
+
+  /* 侧边栏主题切换按钮（仅电脑版显示，固定在侧栏底部） */
+  .sidebar-theme{
+    display: flex; align-items: center; gap: 12px; justify-content: flex-start;
+    margin-top: auto; /* 推到侧边栏最底部 */
+    border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 12px; padding: 13px 16px; font-size: 15px; font-weight: 600; cursor: pointer;
+    box-shadow: var(--shadow);
+  }
+  .sidebar-theme:active{ transform: scale(.98); }
+  .sidebar-theme span{ font-size: 20px; line-height: 1; }
 }

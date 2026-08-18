@@ -7,12 +7,23 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="工商刷题" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="build" content="v20260817d" />
+  <meta name="build" content="v20260817f" />
   <title>中级经济师·工商管理 刷题</title>
   <link rel="icon" href="assets/icon-192.png" />
   <link rel="apple-touch-icon" href="assets/icon-192.png" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    // 主题：默认浅色。使用新键 zjjjs_theme_v2，忽略旧版本残留的 dark，
+    // 让所有老用户回到浅色（用户可在右上角悬浮按钮 / 侧边栏按钮切换并记忆）。
+    // 必须在 CSS 之后、body 渲染前设置 data-theme，避免深浅闪烁。
+    (function () {
+      try {
+        var t = localStorage.getItem('zjjjs_theme_v2') || 'light';
+        document.documentElement.dataset.theme = t;
+      } catch (e) { document.documentElement.dataset.theme = 'light'; }
+    })();
+  </script>
 </head>
 <body>
   <div id="app">
@@ -28,7 +39,9 @@
     <button data-nav="rounds"><span>📚</span>三轮</button>
     <button data-nav="wrong"><span>📕</span>错题</button>
     <button data-nav="exam"><span>📝</span>模考</button>
+    <button id="sidebarTheme" class="sidebar-theme" onclick="toggleTheme()" title="切换浅色/深色">🌙 切换深色</button>
   </nav>
+  <button id="themeToggle" class="theme-toggle" title="切换浅色/深色" onclick="toggleTheme()">🌙</button>
   <script>
     // PWA：注册 Service Worker；当检测到“新版本已接管”时自动刷新一次，
     // 避免「旧 app.js + 新 index.html」缓存不一致导致的异常（如用户名输入框丢失/点不动）。

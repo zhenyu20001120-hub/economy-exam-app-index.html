@@ -4,7 +4,7 @@
  *   - 题库等数据 JSON **network-first**（更新立刻生效，离线时回退缓存）；
  *   - 导航请求回退 index.html（SPA）。
  * 版本号 CACHE 每次结构性更新时 +1，激活时自动清掉老缓存。 */
-const CACHE = 'gq-exam-v3';
+const CACHE = 'gq-exam-v4';
 const ASSETS = [
   './',
   './index.html',

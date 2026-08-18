@@ -293,9 +293,14 @@ function renderPractice() {
   if (!st) return nav('practice');
   const q = BYID[st.ids[st.i]];
   app().innerHTML = `
-    ${topbar(`${st.i + 1}/${st.ids.length}`, "if(confirm('退出本次练习？'))nav('practice')")}
-    <div class="progress"><i style="width:${(st.i + 1) / st.ids.length * 100}%"></i></div>
-    ${questionCard(q, { mode: 'practice' })}`;
+    <div class="study-layout">
+      <div class="study-main">
+        ${topbar(`${st.i + 1}/${st.ids.length}`, "if(confirm('退出本次练习？'))nav('practice')")}
+        <div class="progress"><i style="width:${(st.i + 1) / st.ids.length * 100}%"></i></div>
+        ${questionCard(q, { mode: 'practice' })}
+      </div>
+      <aside class="study-aside">${paletteHtml(st, st.i, 'practiceJump')}</aside>
+    </div>`;
   wireQuestion(q, { mode: 'practice', onNext: () => { if (st.i < st.ids.length - 1) { st.i++; renderPractice(); } else finishPractice(); } });
 }
 function finishPractice() {
@@ -561,10 +566,12 @@ function renderRoundQ() {
   const backJs = isCh
     ? "if(confirm('退出本章学习？进度已保存，可随时继续。'))nav('rounds')"
     : "if(confirm('退出本轮？进度已保存，可在「继续练习」接着做。'))nav('rounds')";
-  app().innerHTML = `${topbar(`${prefix} (${st.i + 1}/${st.ids.length})`, backJs)}
+  app().innerHTML = `<div class="study-layout"><div class="study-main">
+    ${topbar(`${prefix} (${st.i + 1}/${st.ids.length})`, backJs)}
     <div class="progress"><i style="width:${st.i / st.ids.length * 100}%"></i></div>
     <div class="sub" style="margin-bottom:8px">已学 <b id="rDone">${st.done}</b>/${st.ids.length} · 正确率 <b id="rAcc">${st.done ? Math.round(st.correct / st.done * 100) : 0}%</b></div>
-    ${questionCard(q, { mode: isCh ? 'chapter' : 'round' })}`;
+    ${questionCard(q, { mode: isCh ? 'chapter' : 'round' })}
+  </div><aside class="study-aside">${paletteHtml(st, st.i, 'roundJump')}</aside></div>`;
   wireQuestion(q, {
     mode: isCh ? 'chapter' : 'round',
     onResult: (c) => {
@@ -727,11 +734,12 @@ function renderReview() {
   if (st.i >= st.ids.length) return finishReview();
   const q = BYID[st.ids[st.i]];
   const w = store.wrong[q.id];
-  app().innerHTML = `
+  app().innerHTML = `<div class="study-layout"><div class="study-main">
     ${topbar(`复习 · ${st.i + 1}/${st.ids.length}`, "if(confirm('结束复习？'))nav('wrong')")}
     <div class="progress"><i style="width:${(st.i + 1) / st.ids.length * 100}%"></i></div>
     <div class="sub" style="margin-bottom:8px">已错 ${w.wrongCount} 次 · 复习进度 ${w.box}/${SR_INTERVALS.length}</div>
-    ${questionCard(q, { mode: 'review' })}`;
+    ${questionCard(q, { mode: 'review' })}
+  </div><aside class="study-aside">${paletteHtml(st, st.i, 'reviewJump')}</aside></div>`;
   wireQuestion(q, { mode: 'review', onNext: () => { st.i++; renderReview(); } });
 }
 function finishReview() {
@@ -787,19 +795,24 @@ function renderExam() {
   const remainMs = st.endAt - now();
   if (remainMs <= 0 && !st.submitted) return submitExam(true);
   app().innerHTML = `
-    <div class="topbar">
-      <button class="back" onclick="if(confirm('交卷并查看成绩？'))submitExam(false)">✕</button>
-      <div class="t">${st.i + 1}/${st.ids.length}</div>
-      <div class="r timer" id="timer"></div>
-    </div>
-    <div class="progress"><i style="width:${(st.i + 1) / st.ids.length * 100}%"></i></div>
-    ${examQuestionCard(q, st)}
-    <div class="row" style="margin-top:8px">
-      <button class="sec" onclick="examGoto(${st.i - 1})" ${st.i === 0 ? 'disabled' : ''}>‹ 上一题</button>
-      ${st.i < st.ids.length - 1 ? `<button onclick="examGoto(${st.i + 1})">下一题 ›</button>`
-      : `<button onclick="if(confirm('确认交卷？'))submitExam(false)">交卷</button>`}
-    </div>
-    <button class="sec sm" style="margin-top:10px" onclick="examSheet()">答题卡（已答 ${Object.keys(st.answers).length}/${st.ids.length}）</button>`;
+    <div class="study-layout">
+      <div class="study-main">
+        <div class="topbar">
+          <button class="back" onclick="if(confirm('交卷并查看成绩？'))submitExam(false)">✕</button>
+          <div class="t">${st.i + 1}/${st.ids.length}</div>
+          <div class="r timer" id="timer"></div>
+        </div>
+        <div class="progress"><i style="width:${(st.i + 1) / st.ids.length * 100}%"></i></div>
+        ${examQuestionCard(q, st)}
+        <div class="row" style="margin-top:8px">
+          <button class="sec" onclick="examGoto(${st.i - 1})" ${st.i === 0 ? 'disabled' : ''}>‹ 上一题</button>
+          ${st.i < st.ids.length - 1 ? `<button onclick="examGoto(${st.i + 1})">下一题 ›</button>`
+          : `<button onclick="if(confirm('确认交卷？'))submitExam(false)">交卷</button>`}
+        </div>
+        <button class="sec sm" style="margin-top:10px" onclick="examSheet()">答题卡（已答 ${Object.keys(st.answers).length}/${st.ids.length}）</button>
+      </div>
+      <aside class="study-aside">${paletteHtml(st, st.i, 'examJump', (id) => st.answers[id] ? 'ans' : '')}</aside>
+    </div>`;
   startExamTimer();
 }
 function examQuestionCard(q, st) {
@@ -927,6 +940,75 @@ function topbar(title, backJs) {
   return `<div class="topbar"><button class="back" onclick="${backJs}">‹</button><div class="t">${title}</div></div>`;
 }
 document.querySelectorAll('#tabbar button').forEach(b => b.onclick = () => nav(b.dataset.nav));
+
+// ---- 学习页右侧答题卡（参考粉笔：题号网格，按作答状态着色，可点击跳题） ----
+function paletteHtml(st, curI, jumpFn, statusFn) {
+  const statusOf = (id, i) => statusFn ? statusFn(id, i)
+    : (store.answered[id] ? (store.answered[id].correct ? 'ok' : 'bad') : '');
+  // 参考粉笔：按题型分段（单选 / 多选），每段标注已答数
+  const groups = [
+    { type: 'single', label: '单选题' },
+    { type: 'multi', label: '多选题' },
+  ];
+  let answered = 0, total = st.ids.length;
+  const sections = groups.map(g => {
+    const items = st.ids.map((id, i) => ({ id, i })).filter(o => BYID[o.id] && BYID[o.id].type === g.type);
+    if (!items.length) return '';
+    const ans = items.filter(o => statusOf(o.id, o.i)).length;
+    answered += ans;
+    const cells = items.map(o => {
+      let cls = 'pc';
+      if (o.i === curI) cls += ' cur';
+      const s = statusOf(o.id, o.i);
+      if (s) cls += ' ' + s;
+      return `<button type="button" class="${cls}" onclick="${jumpFn}(${o.i})">${o.i + 1}</button>`;
+    }).join('');
+    return `<div class="palette-sec">
+      <div class="palette-sec-h"><span>${g.label}</span><span class="palette-sec-n">已答 ${ans}/${items.length}</span></div>
+      <div class="palette-grid">${cells}</div>
+    </div>`;
+  }).join('');
+  const pct = total ? Math.round(answered / total * 100) : 0;
+  return `<div class="palette">
+    <div class="palette-h">答题卡</div>
+    <div class="palette-stat">已答 <b>${answered}</b> / 共 ${total} 题</div>
+    <div class="progress" style="margin:6px 0 14px"><i style="width:${pct}%"></i></div>
+    ${sections}
+    <div class="palette-legend">
+      <span><i class="dot ok"></i>答对</span>
+      <span><i class="dot bad"></i>答错</span>
+      <span><i class="dot"></i>未答</span>
+    </div>
+  </div>`;
+}
+// 跳题：先夹紧索引范围，再重渲染对应视图
+window.practiceJump = (i) => { if (practiceState) { practiceState.i = Math.max(0, Math.min(practiceState.ids.length - 1, i)); renderPractice(); } };
+window.roundJump = (i) => { if (roundState) { roundState.i = Math.max(0, Math.min(roundState.ids.length - 1, i)); renderRoundQ(); } };
+window.reviewJump = (i) => { if (reviewState) { reviewState.i = Math.max(0, Math.min(reviewState.ids.length - 1, i)); renderReview(); } };
+window.examJump = (i) => { if (examState) { examState.i = Math.max(0, Math.min(examState.ids.length - 1, i)); renderExam(); } };
+
+// ---- 主题切换（浅/深），记忆到 localStorage，默认浅色 ----
+window.toggleTheme = function () {
+  const cur = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('zjjjs_theme_v2', next); } catch (e) {}
+  syncThemeToggle();
+};
+function syncThemeToggle() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const tBtn = document.getElementById('themeToggle');
+  if (tBtn) {
+    tBtn.textContent = dark ? '☀️' : '🌙';
+    tBtn.title = dark ? '切换到浅色' : '切换到深色';
+  }
+  const sBtn = document.getElementById('sidebarTheme');
+  if (sBtn) {
+    sBtn.innerHTML = (dark ? '☀️' : '🌙') + ' 切换' + (dark ? '浅色' : '深色');
+    sBtn.title = dark ? '切换到浅色' : '切换到深色';
+  }
+}
+syncThemeToggle();
 
 // ==================================================================
 // 用户名门 + 云同步（保留旧版能力：按用户名隔离 + 跨设备备份）
