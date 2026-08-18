@@ -27,11 +27,11 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   try { lecture = readJSON('lecture.json'); } catch (e) { ok('lecture.json 可解析', false, e.message); return finish(); }
   try { changes = readJSON('changes.json'); } catch (e) { ok('changes.json 可解析', false, e.message); return finish(); }
 
-  ok('bank 为数组且 607 题', Array.isArray(bank) && bank.length === 607, 'length=' + (bank && bank.length));
+  ok('bank 为数组且 695 题', Array.isArray(bank) && bank.length === 695, 'length=' + (bank && bank.length));
   const singles = bank.filter(q => q.type === 'single' && !q.caseBg).length;
   const multis = bank.filter(q => q.type === 'multi' && !q.caseBg).length;
   const cases = bank.filter(q => q.caseBg).length;
-  ok('题型分布 单选453/多选132/案例22', singles === 453 && multis === 132 && cases === 22, `single=${singles} multi=${multis} case=${cases}`);
+  ok('题型分布 单选504/多选149/案例42', singles === 504 && multis === 149 && cases === 42, `single=${singles} multi=${multis} case=${cases}`);
 
   let bad = 0, noKp = 0, noMapLec = 0;
   const letters = s => (s || '').split('').every(c => c >= 'A' && c <= 'E');
@@ -89,7 +89,7 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   }
   ok('题库加载完成（tabbar 显示）', loaded);
   const t = w.__t;
-  ok('BANK 注入 607', t.BANK.length === 607, 'BANK.length=' + t.BANK.length);
+  ok('BANK 注入 695', t.BANK.length === 695, 'BANK.length=' + t.BANK.length);
 
   // ============ 3. 首页 + 导航 ============
   console.log('\n【3】首页与导航');
@@ -104,7 +104,7 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   }
 
   // ============ 4. 三轮学习覆盖全库 ============
-  console.log('\n【4】三轮学习：每轮≥160 + 跨轮去重 + 覆盖全库 607');
+  console.log('\n【4】三轮学习：每轮≥160 + 跨轮去重 + 覆盖全库 695');
   const seen = new Set();
   const counts = [];
   for (const r of [1, 2, 3]) {
